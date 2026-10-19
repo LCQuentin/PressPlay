@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PLAY // HUB</title>
+    <style>
+        /* --- ESTHÉTIQUE GLOBALE --- */
+        :root {
+            --bg-color: #050505;
+            --accent-color: #CCFF00; /* Vert Acide */
+            --secondary-color: #FFFFFF; /* Blanc */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+            touch-action: none;
+            color: var(--accent-color);
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* --- UI LAYER --- */
+        #ui-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- MENU PRINCIPAL --- */
+        #main-menu {
+            text-align: center;
+            pointer-events: auto;
+            background: rgba(5, 5, 5, 0.95);
+            padding: 30px;
+            border: 4px solid var(--accent-color);
+            box-shadow: 15px 15px 0px var(--secondary-color);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        h1.title {
+            font-size: 4rem;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: -5px;
+            color: var(--accent-color);
+            text-shadow: 4px 4px 0px #000;
+        }
+
+        .grid-menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 2 colonnes */
+            gap: 15px;
+        }
+
+        .menu-btn {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: inherit;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 15px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.1s;
+            width: 100%;
+        }
+
+        .menu-btn:hover {
+            background: var(--accent-color);
+            color: #000;
+            transform: translate(-3px, -3px);
+            box-shadow: 3px 3px 0px var(--secondary-color);
+        }
+
+        /* --- BOUTONS NAV --- */
+        #back-btn, #mute-btn {
+            position: absolute;
+            top: 20px;
+            z-index: 20;
+            background: #000;
+            border: 2px solid var(--secondary-color);
+            color: var(--secondary-color);
+            padding: 10px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #back-btn { left: 20px; display: none; }
+        #mute-btn { right: 20px; pointer-events: auto;}
+
+        #back-btn:hover, #mute-btn:hover {
+            background: var(--secondary-color);
+            color: #000;
+        }
+
+        /* --- OVERLAYS JEU --- */
+        #game-message {
+            display: none;
+            text-align: center;
+        }
+        .big-msg {
+            font-size: 4rem;
+            background: #000;
+            padding: 20px;
+            border: 2px solid var(--accent-color);
+            margin-bottom: 20px;
+        }
+        .sub-msg {
+            font-size: 1.5rem;
+            background: var(--accent-color);
+            color: #000;
+            padding: 5px 10px;
+            display: inline-block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- NAV UI -->
+    <button id="back-btn" onclick="app.loadMenu()">← TERMINAL</button>
+    <button id="mute-btn" onclick="audio.toggleMute()">AUDIO: ON</button>
+
+    <!-- UI LAYER -->
+    <div id="ui-layer">
+        
+        <!-- MENU PRINCIPAL -->
+        <div id="main-menu">
+            <h1 class="title">PLAY</h1>
+            <div class="grid-menu">
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('PONG')">PONG</button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('BREAKOUT')">BREAKOUT</button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('SNAKE')">SNAKE</button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('INVADERS')">INVADERS</button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('TETRIS')">TETRIS</button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('ASTEROIDS')">ASTEROIDS</button>
+            </div>
+        </div>
+
+        <!-- MESSAGES IN-GAME (Pause / Game Over) -->
+        <div id="game-message">
+            <div id="msg-title" class="big-msg">SYSTEM READY</div>
+            <div id="msg-sub" class="sub-msg">CLICK TO START</div>
+        </div>
+
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+/**
+ * PLAY // UNIFIED HUB v4
+ * Engines: PONG, BREAKOUT, SNAKE, INVADERS, TETRIS, ASTEROIDS
+ * Features: High Score, Procedural Audio
+ */
+
+const CONSTANTS = {
+    COLOR_BG: '#050505',
+    COLOR_FG: '#CCFF00', 
+    COLOR_HARD: '#FFFFFF',
+    SHAKE_DECAY: 0.9,
+    GLITCH_CHANCE: 0.015
+};
+
+// --- SYSTÈME AUDIO PROCÉDURAL ---
+class AudioController {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.masterGain = null;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.3; // Volume global
+            this.masterGain.connect(this.ctx.destination);
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        document.getElementById('mute-btn').innerText = this.muted ? "AUDIO: OFF" : "AUDIO: ON";
+        if(this.ctx) {
+            if(this.muted) this.masterGain.disconnect();
+            else this.masterGain.connect(this.ctx.destination);
+        }
+    }
+
+    // Générateur de sons synthétiques
+    play(type) {
+        if (this.muted || !this.ctx) return;
+        this.init(); // Ensure context is ready
+
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        switch (type) {
+            case 'UI_HOVER':
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, t);
+                osc.frequency.exponentialRampToValueAtTime(1760, t + 0.05);
+                gain.gain.setValueAtTime(0.05, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                osc.start(t);
+                osc.stop(t + 0.05);
+                break;
+
+            case 'UI_CLICK':
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, t);
+                osc.frequency.exponentialRampToValueAtTime(110, t + 0.1);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                osc.start(t);
+                osc.stop(t + 0.1);
+                break;
+
+            case 'SHOOT': // Laser rapide
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880, t);
+                osc.frequency.exponentialRampToValueAtTime(110, t + 0.2);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+                osc.start(t);
+                osc.stop(t + 0.2);
+                break;
+
+            case 'HIT': // Rebond sec
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(220, t);
+                osc.frequency.linearRampToValueAtTime(100, t + 0.05);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                osc.start(t);
+                osc.stop(t + 0.05);
+                break;
+            
+            case 'WALL': // Rebond mur (plus haut)
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, t);
+                gain.gain.setValueAtTime(0.05, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                osc.start(t);
+                osc.stop(t + 0.05);
+                break;
+
+            case 'POWERUP': // Arpège montant
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, t);
+                osc.frequency.setValueAtTime(554, t + 0.1);
+                osc.frequency.setValueAtTime(659, t + 0.2);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.linearRampToValueAtTime(0, t + 0.4);
+                osc.start(t);
+                osc.stop(t + 0.4);
+                break;
+
+            case 'SCORE': // Gain de point / ligne
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, t);
+                osc.frequency.setValueAtTime(1760, t + 0.1);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                osc.start(t);
+                osc.stop(t + 0.3);
+                break;
+            
+            case 'GAMEOVER': // Descente triste
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, t);
+                osc.frequency.linearRampToValueAtTime(55, t + 1);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.linearRampToValueAtTime(0, t + 1);
+                osc.start(t);
+                osc.stop(t + 1);
+                break;
+
+            default:
+                osc.disconnect();
+                gain.disconnect();
+                return;
+        }
+    }
+
+    // Générateur de Bruit (Explosions)
+    playNoise(duration = 0.2, volume = 0.2) {
+        if (this.muted || !this.ctx) return;
+        this.init();
+
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        
+        // Filtre Lowpass pour assourdir l'explosion
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1000;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        noise.start();
+    }
+}
+
+// Instance globale Audio
+const audio = new AudioController();
+
+
+// --- SYSTÈME D'INPUT GLOBAL ---
+class InputSystem {
+    constructor() {
+        this.x = window.innerWidth / 2;
+        this.y = window.innerHeight / 2;
+        this.lastArrow = null; 
+        this.keys = {}; 
+        
+        document.addEventListener('mousemove', (e) => {
+            this.x = e.clientX;
+            this.y = e.clientY;
+        });
+        document.addEventListener('touchmove', (e) => {
+            this.x = e.touches[0].clientX;
+            this.y = e.touches[0].clientY;
+            e.preventDefault(); 
+        }, { passive: false });
+
+        document.addEventListener('keydown', (e) => {
+            this.keys[e.key] = true;
+            if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight', ' '].includes(e.key)) {
+                this.lastArrow = e.key;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            this.keys[e.key] = false;
+        });
+
+        // Relâcher les touches si la fenêtre perd le focus (évite les touches "collées")
+        const releaseKeys = () => { this.keys = {}; this.lastArrow = null; };
+        window.addEventListener('blur', releaseKeys);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) releaseKeys(); });
+
+        document.addEventListener('click', (e) => {
+            // Initialisation audio sur première interaction utilisateur
+            audio.init(); 
+            
+            if(e.target.tagName === 'BUTTON') return;
+            if (app.currentGame && app.currentGame.handleClick) {
+                app.currentGame.handleClick();
+            }
+        });
+    }
+
+    consumeArrow() {
+        const k = this.lastArrow;
+        this.lastArrow = null;
+        return k;
+    }
+}
+
+// --- SYSTÈME DE PARTICULES PARTAGÉ ---
+class Particle {
+    constructor(x, y, color, speedScale = 1) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 6 + 2; 
+        const angle = Math.random() * Math.PI * 2;
+        const speed = (Math.random() * 4 + 1) * speedScale;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.life = 1.0;
+        this.decay = Math.random() * 0.03 + 0.01;
+        this.color = color;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.restore();
+    }
+}
+
+// ==========================================
+// ENGINE 1: PONG
+// ==========================================
+class PongEngine {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.active = false;
+        this.paddleH = 120;
+        this.paddleW = 20;
+        this.ballSize = 16;
+        this.reset();
+    }
+
+    reset() {
+        this.p1 = { y: this.canvas.height/2, score: 0 };
+        this.ai = { y: this.canvas.height/2, score: 0 };
+        this.ball = { x: this.canvas.width/2, y: this.canvas.height/2, vx: 0, vy: 0, speed: 0 };
+        this.resetBall();
+        this.particles = [];
+        this.shake = 0;
+        this.state = 'WAITING';
+        this.winner = null;
+        app.showGameMessage("PONG", "CLICK TO START");
+    }
+
+    resetBall() {
+        this.ball.x = this.canvas.width / 2;
+        this.ball.y = this.canvas.height / 2;
+        this.ball.speed = 8;
+        const angle = (Math.random() * Math.PI / 4) - (Math.PI / 8); 
+        const dirX = Math.random() < 0.5 ? 1 : -1;
+        this.ball.vx = Math.cos(angle) * this.ball.speed * dirX;
+        this.ball.vy = Math.sin(angle) * this.ball.speed;
+    }
+
+    handleClick() {
+        if (this.state === 'WAITING') {
+            this.state = 'PLAYING';
+            app.hideGameMessage();
+            audio.play('UI_CLICK');
+        } else if (this.state === 'END') {
+            this.reset();
+        }
+    }
+
+    update() {
+        if (this.state !== 'PLAYING') return;
+        this.p1.y = app.input.y - this.paddleH/2;
+        let target = this.ball.y - this.paddleH/2;
+        if (Math.abs(this.ball.x - (this.canvas.width - 50)) > this.canvas.width * 0.6) { target = this.canvas.height / 2; }
+        this.ai.y += (target - this.ai.y) * 0.08;
+        [this.p1, this.ai].forEach(p => {
+            if(p.y < 0) p.y = 0;
+            if(p.y + this.paddleH > this.canvas.height) p.y = this.canvas.height - this.paddleH;
+        });
+        this.ball.x += this.ball.vx;
+        this.ball.y += this.ball.vy;
+        if (this.ball.y <= 0 || this.ball.y + this.ballSize >= this.canvas.height) {
+            this.ball.vy *= -1;
+            this.shake = 10;
+            audio.play('WALL');
+        }
+        const checkPaddle = (p, x) => {
+            return (this.ball.y + this.ballSize > p.y && this.ball.y < p.y + this.paddleH && Math.abs(this.ball.x - x) < this.paddleW + 10);
+        };
+        if (this.ball.vx < 0 && this.ball.x < 50 + this.paddleW && checkPaddle(this.p1, 50)) {
+            this.ball.vx *= -1; this.ball.speed = Math.min(this.ball.speed + 0.5, 20); this.shake = 15; this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_FG);
+            audio.play('HIT');
+        }
+        if (this.ball.vx > 0 && this.ball.x > this.canvas.width - 50 - this.paddleW && checkPaddle(this.ai, this.canvas.width - 50 - this.paddleW)) {
+            this.ball.vx *= -1; this.ball.speed = Math.min(this.ball.speed + 0.5, 20); this.shake = 15; this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_HARD);
+            audio.play('HIT');
+        }
+        if (this.ball.x < 0) { this.ai.score++; this.checkWin(); this.resetBall(); this.shake = 30; audio.playNoise(0.4, 0.25); } 
+        else if (this.ball.x > this.canvas.width) { this.p1.score++; this.checkWin(); this.resetBall(); this.shake = 30; audio.play('SCORE'); }
+        this.particles.forEach(p => p.update());
+        this.particles = this.particles.filter(p => p.life > 0);
+        if(this.shake > 0) this.shake *= 0.9;
+    }
+
+    checkWin() {
+        if (this.p1.score >= 5 || this.ai.score >= 5) {
+            this.state = 'END';
+            this.winner = this.p1.score >= 5 ? "PLAYER" : "CPU";
+            app.showGameMessage(this.winner + " WINS", "CLICK TO RESET");
+            audio.play('GAMEOVER');
+        }
+    }
+
+    spawnParticles(x, y, c) { for(let i=0; i<10; i++) this.particles.push(new Particle(x, y, c)); }
+
+    draw() {
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        if(this.shake > 0) { this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake); }
+        this.ctx.font = "bold 30vh 'Courier New'";
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillStyle = '#111';
+        this.ctx.fillText(this.p1.score, this.canvas.width*0.25, this.canvas.height/2);
+        this.ctx.fillText(this.ai.score, this.canvas.width*0.75, this.canvas.height/2);
+        this.ctx.strokeStyle = '#111';
+        this.ctx.lineWidth = 10;
+        this.ctx.beginPath(); this.ctx.moveTo(this.canvas.width/2, 0); this.ctx.lineTo(this.canvas.width/2, this.canvas.height); this.ctx.stroke();
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.fillRect(50, this.p1.y, this.paddleW, this.paddleH);
+        this.ctx.fillStyle = CONSTANTS.COLOR_HARD;
+        this.ctx.fillRect(this.canvas.width - 50 - this.paddleW, this.ai.y, this.paddleW, this.paddleH);
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.fillRect(this.ball.x, this.ball.y, this.ballSize, this.ballSize);
+        this.particles.forEach(p => p.draw(this.ctx));
+        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
+        this.ctx.restore();
+    }
+}
+
+// ==========================================
+// ENGINE 2: BREAKOUT
+// ==========================================
+class BreakoutEngine {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.paddleW = 140;
+        this.paddleH = 20;
+        this.ballSize = 16;
+        this.resetLevel();
+    }
+
+    resetLevel() {
+        this.score = 0;
+        this.lives = 3;
+        this.bricks = [];
+        this.balls = [];
+        this.powerups = [];
+        this.particles = [];
+        this.shake = 0;
+        this.state = 'WAITING';
+        this.paddle = { x: this.canvas.width/2 - this.paddleW/2, y: this.canvas.height - 60 };
+        let cols = Math.floor(this.canvas.width / 80);
+        let w = (this.canvas.width - (cols+1)*4) / cols;
+        for(let r=0; r<6; r++) {
+            for(let c=0; c<cols; c++) {
+                let isHard = (Math.random() < 0.3 + (6-r)*0.05);
+                this.bricks.push({ x: 4 + c*(w+4), y: 80 + r*34, w: w, h: 30, hp: isHard ? 2 : 1, maxHp: isHard ? 2 : 1, active: true });
+            }
+        }
+        app.showGameMessage("BREAKOUT", "CLICK TO LAUNCH");
+    }
+
+    spawnBall() {
+        this.balls.push({ x: this.paddle.x + this.paddleW/2, y: this.paddle.y - 40, vx: (Math.random()-0.5)*8, vy: -6, active: true });
+        audio.play('SHOOT');
+    }
+
+    handleClick() {
+        if (this.state === 'WAITING') {
+            this.state = 'PLAYING';
+            this.spawnBall();
+            app.hideGameMessage();
+        } else if (this.state === 'GAMEOVER' || this.state === 'VICTORY') {
+            this.resetLevel();
+        } 
+    }
+
+    update() {
+        if (this.state !== 'PLAYING') return;
+        let targetX = app.input.x - this.paddleW/2;
+        this.paddle.x += (targetX - this.paddle.x) * 0.6;
+        if(this.paddle.x < 0) this.paddle.x = 0;
+        if(this.paddle.x + this.paddleW > this.canvas.width) this.paddle.x = this.canvas.width - this.paddleW;
+
+        for(let i=this.balls.length-1; i>=0; i--) {
+            let b = this.balls[i];
+            b.x += b.vx; b.y += b.vy;
+            if(b.x <= 0 || b.x+this.ballSize >= this.canvas.width) { b.vx *= -1; audio.play('WALL'); }
+            if(b.y <= 0) { b.vy *= -1; audio.play('WALL'); }
+            if(b.y > this.canvas.height) { this.balls.splice(i, 1); continue; }
+            if(b.y+this.ballSize >= this.paddle.y && b.y <= this.paddle.y+this.paddleH && b.x+this.ballSize >= this.paddle.x && b.x <= this.paddle.x+this.paddleW && b.vy > 0) {
+                let hit = (b.x + this.ballSize/2) - (this.paddle.x + this.paddleW/2);
+                let angle = (hit / (this.paddleW/2)) * (Math.PI/3);
+                let speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+                speed = Math.min(speed + 0.2, 16);
+                b.vx = speed * Math.sin(angle); b.vy = -speed * Math.cos(angle);
+                this.shake = 10;
+                audio.play('HIT');
+            }
+            for(let brick of this.bricks) {
+                if(!brick.active) continue;
+                if(b.x < brick.x + brick.w && b.x + this.ballSize > brick.x && b.y < brick.y + brick.h && b.y + this.ballSize > brick.y) {
+                    brick.hp--;
+                    if(brick.hp <= 0) {
+                        brick.active = false; this.score += 10;
+                        if(Math.random() < 0.15) this.powerups.push({ x: brick.x + brick.w/2, y: brick.y, type: Math.random()>0.5 ? 'LIFE':'MULTI', active:true });
+                        audio.play('HIT');
+                    } else {
+                        audio.play('WALL'); // Brique dure
+                    }
+                    if(b.x - b.vx + this.ballSize <= brick.x || b.x - b.vx >= brick.x + brick.w) b.vx *= -1; else b.vy *= -1;
+                    this.shake = 5; this.spawnParticles(brick.x+brick.w/2, brick.y+brick.h/2, brick.hp > 0 ? CONSTANTS.COLOR_HARD : CONSTANTS.COLOR_FG);
+                    break;
+                }
+            }
+        }
+        for(let i=this.powerups.length-1; i>=0; i--) {
+            let p = this.powerups[i];
+            p.y += 3;
+            if(p.y > this.canvas.height) p.active = false;
+            if(p.active && p.y+20 >= this.paddle.y && p.y <= this.paddle.y+this.paddleH && p.x+20 >= this.paddle.x && p.x <= this.paddle.x+this.paddleW) {
+                p.active = false;
+                audio.play('POWERUP');
+                if(p.type === 'LIFE') this.lives++;
+                if(p.type === 'MULTI') { this.balls.push({x: this.paddle.x+this.paddleW/2, y: this.paddle.y-40, vx: 5, vy:-6, active:true}); this.balls.push({x: this.paddle.x+this.paddleW/2, y: this.paddle.y-40, vx: -5, vy:-6, active:true}); }
+            }
+            if(!p.active) this.powerups.splice(i, 1);
+        }
+        if(this.balls.length === 0 && this.state === 'PLAYING') {
+            this.lives--; this.shake = 20;
+            audio.playNoise(0.4, 0.25);
+            if(this.lives <= 0) { 
+                this.state = 'GAMEOVER'; 
+                const isRecord = app.saveHighScore('BREAKOUT', this.score);
+                app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM FAILURE", "SCORE: " + this.score); 
+                audio.play('GAMEOVER');
+            }
+            else { this.state = 'WAITING'; app.showGameMessage("SIGNAL LOST", "CLICK TO RESUME"); }
+        }
+        if(this.bricks.every(b => !b.active)) { 
+            this.state = 'VICTORY'; 
+            const isRecord = app.saveHighScore('BREAKOUT', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM CLEARED", "PERFECT RUN"); 
+            audio.play('POWERUP');
+        }
+        this.particles.forEach(p => p.update()); this.particles = this.particles.filter(p => p.life > 0);
+        if(this.shake > 0) this.shake *= 0.9;
+    }
+
+    spawnParticles(x, y, c) { for(let i=0; i<8; i++) this.particles.push(new Particle(x, y, c)); }
+
+    draw() {
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        this.ctx.font = "bold 30vh 'Courier New'"; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillStyle = '#111';
+        this.ctx.fillText(this.score, this.canvas.width/2, this.canvas.height/2);
+        
+        // UI
+        this.ctx.font = "bold 24px 'Courier New'"; 
+        this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        let livesStr = "LIVES: "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr, 20, 40);
+        // HI SCORE
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText("HI: " + app.getHighScore('BREAKOUT'), this.canvas.width - 20, 40);
+
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG; this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddleW, this.paddleH);
+        this.bricks.forEach(b => { if(!b.active) return; this.ctx.fillStyle = b.hp === 2 ? CONSTANTS.COLOR_HARD : CONSTANTS.COLOR_FG; this.ctx.fillRect(b.x, b.y, b.w, b.h); });
+        this.ctx.fillStyle = '#FFF'; this.balls.forEach(b => this.ctx.fillRect(b.x, b.y, this.ballSize, this.ballSize));
+        this.powerups.forEach(p => { this.ctx.fillStyle = CONSTANTS.COLOR_FG; this.ctx.fillRect(p.x, p.y, 20, 20); this.ctx.fillStyle = '#000'; this.ctx.fillText(p.type==='LIFE'?'♥':'Ø', p.x+5, p.y+15); });
+        this.particles.forEach(p => p.draw(this.ctx));
+        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
+        this.ctx.restore();
+    }
+}
+
+// ==========================================
+// ENGINE 3: SNAKE
+// ==========================================
+class SnakeEngine {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.grid = 20;
+        this.reset();
+    }
+
+    reset() {
+        const cx = Math.floor(this.canvas.width / this.grid / 2);
+        const cy = Math.floor(this.canvas.height / this.grid / 2);
+        this.snake = [{x: cx, y: cy}, {x: cx-1, y: cy}, {x: cx-2, y: cy}];
+        this.dir = {x: 1, y: 0}; this.nextDir = {x: 1, y: 0};
+        this.spawnFood();
+        this.score = 0; this.speed = 8; this.frameCount = 0; this.shake = 0; this.particles = []; this.state = 'WAITING';
+        app.showGameMessage("SNAKE", "PRESS ARROWS TO START");
+    }
+
+    spawnFood() {
+        const cols = Math.floor(this.canvas.width / this.grid);
+        const rows = Math.floor(this.canvas.height / this.grid);
+        let valid = false;
+        while(!valid) {
+            this.food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
+            const onSnake = this.snake.some(s => s.x === this.food.x && s.y === this.food.y);
+            const underButton = (this.food.x < 12 && this.food.y < 6);
+            valid = !onSnake && !underButton;
+        }
+    }
+
+    handleClick() {
+        if (this.state === 'GAMEOVER') this.reset();
+    }
+
+    update() {
+        const key = app.input.consumeArrow();
+        if (key) {
+            if (this.state === 'WAITING') { this.state = 'PLAYING'; app.hideGameMessage(); audio.play('UI_CLICK'); }
+            if (key === 'ArrowUp' && this.dir.y === 0) this.nextDir = {x: 0, y: -1};
+            if (key === 'ArrowDown' && this.dir.y === 0) this.nextDir = {x: 0, y: 1};
+            if (key === 'ArrowLeft' && this.dir.x === 0) this.nextDir = {x: -1, y: 0};
+            if (key === 'ArrowRight' && this.dir.x === 0) this.nextDir = {x: 1, y: 0};
+        }
+        if (this.state !== 'PLAYING') return;
+        this.frameCount++;
+        if (this.frameCount < this.speed) { this.updateParticles(); return; }
+        this.frameCount = 0; this.dir = this.nextDir;
+        const head = {x: this.snake[0].x + this.dir.x, y: this.snake[0].y + this.dir.y};
+        const cols = Math.floor(this.canvas.width / this.grid);
+        const rows = Math.floor(this.canvas.height / this.grid);
+        if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || this.checkSelfCollision(head)) {
+            this.state = 'GAMEOVER'; this.shake = 30; this.spawnParticles(this.snake[0].x * this.grid, this.snake[0].y * this.grid, CONSTANTS.COLOR_FG);
+            const isRecord = app.saveHighScore('SNAKE', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM FAILURE", "SCORE: " + this.score); 
+            audio.playNoise(0.5);
+            return;
+        }
+        this.snake.unshift(head);
+        if (head.x === this.food.x && head.y === this.food.y) {
+            this.score += 10; this.spawnFood(); this.shake = 5; this.spawnParticles(head.x * this.grid, head.y * this.grid, CONSTANTS.COLOR_HARD);
+            audio.play('SCORE');
+            if (this.speed > 3 && this.score % 50 === 0) this.speed--;
+        } else { this.snake.pop(); }
+        this.updateParticles();
+    }
+
+    checkSelfCollision(head) { return this.snake.some(s => s.x === head.x && s.y === head.y); }
+    updateParticles() { this.particles.forEach(p => p.update()); this.particles = this.particles.filter(p => p.life > 0); if (this.shake > 0) this.shake *= 0.8; }
+    spawnParticles(x, y, c) { for(let i=0; i<8; i++) this.particles.push(new Particle(x + this.grid/2, y + this.grid/2, c)); }
+
+    draw() {
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG; this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        this.ctx.font = "bold 30vh 'Courier New'"; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillStyle = '#111';
+        this.ctx.fillText(this.score, this.canvas.width/2, this.canvas.height/2);
+        
+        // HI SCORE
+        this.ctx.font = "bold 24px 'Courier New'"; 
+        this.ctx.textAlign = 'right'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.fillText("HI: " + app.getHighScore('SNAKE'), this.canvas.width - 20, 40);
+
+        this.ctx.strokeStyle = '#0a0a0a'; this.ctx.lineWidth = 1;
+        for (let x = 0; x < this.canvas.width; x += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(x, 0); this.ctx.lineTo(x, this.canvas.height); this.ctx.stroke(); }
+        for (let y = 0; y < this.canvas.height; y += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(0, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke(); }
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.snake.forEach((s) => { this.ctx.fillRect(s.x * this.grid + 1, s.y * this.grid + 1, this.grid - 2, this.grid - 2); });
+        this.ctx.fillStyle = CONSTANTS.COLOR_HARD; this.ctx.fillRect(this.food.x * this.grid, this.food.y * this.grid, this.grid, this.grid);
+        this.particles.forEach(p => p.draw(this.ctx));
+        this.ctx.fillStyle = 'rgba(0,0,0,0.1)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
+        this.ctx.restore();
+    }
+}
+
+// ==========================================
+// ENGINE 4: SPACE INVADERS
+// ==========================================
+class SpaceInvadersEngine {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.reset();
+    }
+
+    reset() {
+        this.score = 0;
+        this.lives = 3;
+        this.state = 'WAITING';
+        this.particles = [];
+        this.shake = 0;
+        this.player = { x: this.canvas.width / 2 - 20, y: this.canvas.height - 50, w: 40, h: 20, speed: 6, cooldown: 0 };
+        this.aliens = []; this.bullets = []; this.enemyBullets = []; this.bunkers = [];
+        
+        const rows = 5; const cols = 10; const alienW = 30; const alienH = 20; const gap = 15;
+        const startX = (this.canvas.width - (cols * (alienW + gap))) / 2;
+        for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { this.aliens.push({ x: startX + c * (alienW + gap), y: 80 + r * (alienH + gap), w: alienW, h: alienH, active: true }); } }
+        this.alienDir = 1; this.alienSpeed = 1;
+        
+        const bunkerCount = 3; const bunkerW = 80; const bunkerGap = (this.canvas.width - (bunkerCount * bunkerW)) / (bunkerCount + 1);
+        for(let i=0; i<bunkerCount; i++) { this.bunkers.push({ x: bunkerGap + i * (bunkerW + bunkerGap), y: this.canvas.height - 120, w: bunkerW, h: 40, hp: 10 }); }
+        app.showGameMessage("INVADERS", "ARROWS: MOVE // SPACE: FIRE");
+    }
+
+    handleClick() {
+        if(this.state === 'WAITING') { this.state = 'PLAYING'; app.hideGameMessage(); }
+        else if (this.state === 'GAMEOVER' || this.state === 'VICTORY') { this.reset(); }
+    }
+
+    update() {
+        const keys = app.input.keys;
+        if ((keys['ArrowLeft'] || keys['ArrowRight'] || keys[' ']) && this.state === 'WAITING') { this.state = 'PLAYING'; app.hideGameMessage(); }
+        if(this.state !== 'PLAYING') return;
+
+        if(keys['ArrowLeft']) this.player.x -= this.player.speed;
+        if(keys['ArrowRight']) this.player.x += this.player.speed;
+        if(this.player.x < 0) this.player.x = 0; if(this.player.x + this.player.w > this.canvas.width) this.player.x = this.canvas.width - this.player.w;
+
+        if(this.player.cooldown > 0) this.player.cooldown--;
+        if((keys[' '] || keys['ArrowUp']) && this.player.cooldown <= 0) { 
+            this.bullets.push({x: this.player.x + this.player.w/2 - 2, y: this.player.y, w: 4, h: 10, active: true}); 
+            this.player.cooldown = 20; 
+            audio.play('SHOOT');
+        }
+
+        for(let b of this.bullets) { b.y -= 10; if(b.y < 0) b.active = false; } this.bullets = this.bullets.filter(b => b.active);
+        for(let b of this.enemyBullets) { b.y += 4; if(b.y > this.canvas.height) b.active = false; } this.enemyBullets = this.enemyBullets.filter(b => b.active);
+
+        let hitEdge = false; let lowestY = 0; const activeAliens = this.aliens.filter(a => a.active);
+        if (activeAliens.length === 0) { 
+            this.state = 'VICTORY'; 
+            const isRecord = app.saveHighScore('INVADERS', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM CLEARED", "ALIEN THREAT NEUTRALIZED"); 
+            audio.play('POWERUP');
+            return; 
+        }
+
+        if(Math.random() < 0.005 + (0.0005 * (50 - activeAliens.length))) {
+            const shooter = activeAliens[Math.floor(Math.random() * activeAliens.length)];
+            this.enemyBullets.push({x: shooter.x + shooter.w/2, y: shooter.y + shooter.h, w: 4, h: 10, active: true});
+            // audio.play('SHOOT'); // Maybe too noisy
+        }
+
+        const speedMult = 1 + (50 - activeAliens.length) * 0.05;
+        for(let a of this.aliens) { if(!a.active) continue; a.x += this.alienDir * this.alienSpeed * speedMult; if(a.x <= 10 || a.x + a.w >= this.canvas.width - 10) hitEdge = true; if(a.y > lowestY) lowestY = a.y; }
+        if(hitEdge) { this.alienDir *= -1; for(let a of this.aliens) a.y += 20; }
+        if(lowestY + 20 >= this.player.y) { 
+            this.state = 'GAMEOVER'; 
+            const isRecord = app.saveHighScore('INVADERS', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "INVASION SUCCESSFUL", "SCORE: " + this.score); 
+            audio.play('GAMEOVER');
+        }
+
+        for(let b of this.bullets) { for(let a of this.aliens) { if(!a.active) continue; if(b.x < a.x + a.w && b.x + b.w > a.x && b.y < a.y + a.h && b.y + b.h > a.y) { a.active = false; b.active = false; this.score += 20; this.shake = 5; this.spawnParticles(a.x + a.w/2, a.y + a.h/2, CONSTANTS.COLOR_HARD); audio.playNoise(0.1); break; } } }
+        
+        const damageBunker = (bullet, bunker) => { if(bullet.x < bunker.x + bunker.w && bullet.x + bullet.w > bunker.x && bullet.y < bunker.y + bunker.h && bullet.y + bullet.h > bunker.y) { bullet.active = false; bunker.hp--; this.spawnParticles(bullet.x, bullet.y, CONSTANTS.COLOR_FG); audio.play('HIT'); return true; } return false; };
+        this.bunkers = this.bunkers.filter(bnk => bnk.hp > 0);
+        for(let bnk of this.bunkers) { for(let b of this.bullets) if(damageBunker(b, bnk)) break; for(let eb of this.enemyBullets) if(damageBunker(eb, bnk)) break; }
+
+        for(let eb of this.enemyBullets) { if(eb.x < this.player.x + this.player.w && eb.x + eb.w > this.player.x && eb.y < this.player.y + this.player.h && eb.y + eb.h > this.player.y) { eb.active = false; this.lives--; this.shake = 20; this.spawnParticles(this.player.x + this.player.w/2, this.player.y, CONSTANTS.COLOR_FG); audio.playNoise(0.3); if(this.lives <= 0) { 
+            this.state = 'GAMEOVER'; 
+            const isRecord = app.saveHighScore('INVADERS', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM FAILURE", "SCORE: " + this.score); 
+            audio.play('GAMEOVER');
+        } } }
+
+        this.particles.forEach(p => p.update()); this.particles = this.particles.filter(p => p.life > 0);
+        if(this.shake > 0) this.shake *= 0.9;
+    }
+
+    spawnParticles(x, y, c) { for(let i=0; i<8; i++) this.particles.push(new Particle(x, y, c)); }
+
+    draw() {
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG; this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+
+        // Score
+        this.ctx.font = "bold 30vh 'Courier New'"; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillStyle = '#111';
+        this.ctx.fillText(this.score, this.canvas.width/2, this.canvas.height/2);
+
+        // HUD
+        this.ctx.font = "bold 24px 'Courier New'"; this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        let livesStr = "LIVES: "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr, 20, 40);
+        // HI SCORE
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText("HI: " + app.getHighScore('INVADERS'), this.canvas.width - 20, 40);
+
+        // Player
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.fillRect(this.player.x, this.player.y, this.player.w, this.player.h);
+        // Little cannon on top
+        this.ctx.fillRect(this.player.x + this.player.w/2 - 4, this.player.y - 6, 8, 6);
+
+        // Aliens
+        this.ctx.fillStyle = CONSTANTS.COLOR_HARD; // White aliens
+        for(let a of this.aliens) {
+            if(a.active) this.ctx.fillRect(a.x, a.y, a.w, a.h);
+        }
+
+        // Bunkers
+        for(let bnk of this.bunkers) {
+            // Opacity based on HP
+            this.ctx.fillStyle = `rgba(204, 255, 0, ${bnk.hp / 10})`;
+            this.ctx.fillRect(bnk.x, bnk.y, bnk.w, bnk.h);
+        }
+
+        // Bullets
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        for(let b of this.bullets) this.ctx.fillRect(b.x, b.y, b.w, b.h);
+        
+        this.ctx.fillStyle = CONSTANTS.COLOR_HARD; // Enemy bullets white
+        for(let eb of this.enemyBullets) this.ctx.fillRect(eb.x, eb.y, eb.w, eb.h);
+
+        // Particles
+        this.particles.forEach(p => p.draw(this.ctx));
+
+        // Scanlines
+        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
+        this.ctx.restore();
+    }
+}
+
+// ==========================================
+// ENGINE 5: TETRIS
+// ==========================================
+class TetrisEngine {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.rows = 20;
+        this.cols = 10;
+        this.gridSize = 30; // Taille de base, sera ajustée
+        this.reset();
+    }
+
+    reset() {
+        this.grid = Array(this.rows).fill().map(() => Array(this.cols).fill(0));
+        this.score = 0;
+        this.shake = 0;
+        this.particles = [];
+        this.state = 'WAITING';
+        this.dropCounter = 0;
+        this.dropInterval = 40; // Vitesse de chute (frames)
+        
+        // Formes
+        this.pieces = 'ILJOTSZ';
+        this.colors = [null, CONSTANTS.COLOR_FG, CONSTANTS.COLOR_HARD, CONSTANTS.COLOR_FG, CONSTANTS.COLOR_HARD, CONSTANTS.COLOR_FG, CONSTANTS.COLOR_HARD, CONSTANTS.COLOR_FG];
+        
+        this.player = { pos: {x: 0, y: 0}, matrix: null, score: 0 };
+        this.resetPiece();
+        this.calculateScale(); // Ajuster à l'écran
+        
+        app.showGameMessage("TETRIS", "ARROWS: MOVE // SPACE: DROP");
+    }
+
+    calculateScale() {
+        // Calcul pour centrer la grille
+        this.gridSize = Math.floor(Math.min(this.canvas.width / (this.cols + 4), this.canvas.height / (this.rows + 2)));
+        this.offsetX = Math.floor((this.canvas.width - this.cols * this.gridSize) / 2);
+        this.offsetY = Math.floor((this.canvas.height - this.rows * this.gridSize) / 2);
+    }
+
+    createPiece(type) {
+        if (type === 'I') return [[0, 1, 0, 0],[0, 1, 0, 0],[0, 1, 0, 0],[0, 1, 0, 0]];
+        if (type === 'L') return [[0, 2, 0],[0, 2, 0],[0, 2, 2]];
+        if (type === 'J') return [[0, 3, 0],[0, 3, 0],[3, 3, 0]];
+        if (type === 'O') return [[4, 4],[4, 4]];
+        if (type === 'Z') return [[5, 5, 0],[0, 5, 5],[0, 0, 0]];
+        if (type === 'S') return [[0, 6, 6],[6, 6, 0],[0, 0, 0]];
+        if (type === 'T') return [[0, 7, 0],[7, 7, 7],[0, 0, 0]];
+    }
+
+    resetPiece() {
+        const type = this.pieces[this.pieces.length * Math.random() | 0];
+        this.player.matrix = this.createPiece(type);
+        this.player.pos.y = 0;
+        this.player.pos.x = (this.grid[0].length / 2 | 0) - (this.player.matrix[0].length / 2 | 0);
+        
+        if (this.collide(this.grid, this.player)) {
+            this.state = 'GAMEOVER';
+            const isRecord = app.saveHighScore('TETRIS', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "GRID LOCKED", "SCORE: " + this.score);
+            audio.play('GAMEOVER');
+        }
+    }
+
+    collide(arena, player) {
+        const m = player.matrix;
+        const o = player.pos;
+        for (let y = 0; y < m.length; ++y) {
+            for (let x = 0; x < m[y].length; ++x) {
+                if (m[y][x] !== 0 && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    merge(arena, player) {
+        player.matrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value !== 0) {
+                    arena[y + player.pos.y][x + player.pos.x] = value;
+                }
+            });
+        });
+    }
+
+    rotate(matrix, dir) {
+        for (let y = 0; y < matrix.length; ++y) {
+            for (let x = 0; x < y; ++x) {
+                [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+            }
+        }
+        if (dir > 0) matrix.forEach(row => row.reverse());
+        else matrix.reverse();
+    }
+
+    playerRotate(dir) {
+        const pos = this.player.pos.x;
+        let offset = 1;
+        this.rotate(this.player.matrix, dir);
+        while (this.collide(this.grid, this.player)) {
+            this.player.pos.x += offset;
+            offset = -(offset + (offset > 0 ? 1 : -1));
+            if (offset > this.player.matrix[0].length) {
+                this.rotate(this.player.matrix, -dir);
+                this.player.pos.x = pos;
+                return;
+            }
+        }
+        audio.play('UI_CLICK'); // Rotate sound
+    }
+
+    playerDrop() {
+        this.player.pos.y++;
+        if (this.collide(this.grid, this.player)) {
+            this.player.pos.y--;
+            this.merge(this.grid, this.player);
+            this.arenaSweep();
+            this.resetPiece();
+            this.shake = 5;
+            audio.play('HIT');
+        }
+        this.dropCounter = 0;
+    }
+
+    playerHardDrop() {
+        while (!this.collide(this.grid, this.player)) {
+            this.player.pos.y++;
+        }
+        this.player.pos.y--;
+        this.merge(this.grid, this.player);
+        this.arenaSweep();
+        this.resetPiece();
+        this.shake = 10;
+        this.dropCounter = 0;
+        audio.play('HIT');
+    }
+
+    playerMove(dir) {
+        this.player.pos.x += dir;
+        if (this.collide(this.grid, this.player)) {
+            this.player.pos.x -= dir;
+        }
+    }
+
+    arenaSweep() {
+        outer: for (let y = this.grid.length - 1; y > 0; --y) {
+            for (let x = 0; x < this.grid[y].length; ++x) {
+                if (this.grid[y][x] === 0) {
+                    continue outer;
+                }
+            }
+            const row = this.grid.splice(y, 1)[0].fill(0);
+            this.grid.unshift(row);
+            ++y;
+            this.score += 100;
+            this.shake = 20;
+            audio.play('SCORE');
+            // Particles on line clear
+            for(let k=0; k<10; k++) {
+                this.particles.push(new Particle(this.offsetX + Math.random()*this.cols*this.gridSize, this.offsetY + y*this.gridSize, CONSTANTS.COLOR_FG));
+            }
+        }
+    }
+
+    handleClick() {
+        if (this.state === 'GAMEOVER') this.reset();
+        else if (this.state === 'WAITING') {
+            this.state = 'PLAYING';
+            app.hideGameMessage();
+        }
+    }
+
+    update() {
+        const key = app.input.consumeArrow();
+        if (key) {
+            if(this.state === 'WAITING') { this.state = 'PLAYING'; app.hideGameMessage(); }
+            
+            if(this.state === 'PLAYING') {
+                if (key === 'ArrowUp') this.playerRotate(1);
+                if (key === 'ArrowLeft') this.playerMove(-1);
+                if (key === 'ArrowRight') this.playerMove(1);
+                if (key === 'ArrowDown') this.playerDrop();
+                if (key === ' ') this.playerHardDrop();
+            }
+        }
+
+        if (this.state !== 'PLAYING') return;
+
+        this.dropCounter++;
+        if (this.dropCounter > this.dropInterval) {
+            this.playerDrop();
+        }
+
+        this.particles.forEach(p => p.update());
+        this.particles = this.particles.filter(p => p.life > 0);
+        if (this.shake > 0) this.shake *= 0.9;
+    }
+
+    draw() {
+        this.calculateScale(); // Recalc if resize
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.save();
+        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+
+        // Draw Board Background
+        this.ctx.fillStyle = '#111';
+        this.ctx.fillRect(this.offsetX - 5, this.offsetY - 5, this.cols * this.gridSize + 10, this.rows * this.gridSize + 10);
+        this.ctx.strokeStyle = CONSTANTS.COLOR_FG;
+        this.ctx.strokeRect(this.offsetX - 5, this.offsetY - 5, this.cols * this.gridSize + 10, this.rows * this.gridSize + 10);
+
+        // Draw Matrix Helper
+        const drawMatrix = (matrix, offset) => {
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        this.ctx.fillStyle = (value % 2 === 0) ? CONSTANTS.COLOR_FG : CONSTANTS.COLOR_HARD;
+                        this.ctx.fillRect(this.offsetX + (x + offset.x) * this.gridSize + 1, 
+                                          this.offsetY + (y + offset.y) * this.gridSize + 1, 
+                                          this.gridSize - 2, this.gridSize - 2);
+                    }
+                });
+            });
+        };
+
+        drawMatrix(this.grid, {x: 0, y: 0});
+        drawMatrix(this.player.matrix, this.player.pos);
+
+        // UI
+        this.ctx.font = "bold 24px 'Courier New'";
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText("SCORE: " + this.score, 20, 40);
+        // HI SCORE
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText("HI: " + app.getHighScore('TETRIS'), this.canvas.width - 20, 40);
+
+        this.particles.forEach(p => p.draw(this.ctx));
+        this.ctx.restore();
+    }
+}
+
+// ==========================================
+// ENGINE 6: ASTEROIDS
+// ==========================================
+class AsteroidsEngine {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.reset();
+    }
+
+    reset() {
+        this.score = 0;
+        this.state = 'WAITING';
+        this.ship = { x: this.canvas.width/2, y: this.canvas.height/2, a: -Math.PI/2, xv: 0, yv: 0, r: 10 };
+        this.asteroids = [];
+        this.bullets = [];
+        this.particles = [];
+        this.shake = 0;
+        
+        // Spawn Asteroids
+        for(let i=0; i<5; i++) {
+            this.spawnAsteroid(Math.random()*this.canvas.width, Math.random()*this.canvas.height, 40);
+        }
+        
+        app.showGameMessage("ASTEROIDS", "ARROWS: DRIVE // SPACE: FIRE");
+    }
+
+    spawnAsteroid(x, y, r) {
+        let vert = [];
+        let sides = 6 + Math.floor(Math.random()*4);
+        for(let i=0; i<sides; i++) {
+            let a = i / sides * Math.PI * 2;
+            let d = r * (0.8 + Math.random()*0.4);
+            vert.push({x: Math.cos(a)*d, y: Math.sin(a)*d});
+        }
+        this.asteroids.push({
+            x: x, y: y, r: r, 
+            xv: (Math.random()-0.5)*3, yv: (Math.random()-0.5)*3,
+            vert: vert
+        });
+    }
+
+    handleClick() {
+        if(this.state === 'WAITING') { this.state = 'PLAYING'; app.hideGameMessage(); }
+        else if (this.state === 'GAMEOVER') this.reset();
+    }
+
+    update() {
+        const keys = app.input.keys;
+        if((keys['ArrowUp'] || keys[' ']) && this.state === 'WAITING') { this.state = 'PLAYING'; app.hideGameMessage(); }
+        if(this.state !== 'PLAYING') return;
+
+        // Ship Control
+        if(keys['ArrowLeft']) this.ship.a -= 0.1;
+        if(keys['ArrowRight']) this.ship.a += 0.1;
+        if(keys['ArrowUp']) {
+            this.ship.xv += Math.cos(this.ship.a) * 0.1;
+            this.ship.yv += Math.sin(this.ship.a) * 0.1;
+            // Particles thrust
+            this.particles.push(new Particle(this.ship.x - Math.cos(this.ship.a)*10, this.ship.y - Math.sin(this.ship.a)*10, CONSTANTS.COLOR_FG));
+        }
+        
+        // Shoot
+        if(keys[' '] && !this.lastShot) {
+            this.bullets.push({x: this.ship.x + Math.cos(this.ship.a)*15, y: this.ship.y + Math.sin(this.ship.a)*15, xv: Math.cos(this.ship.a)*7, yv: Math.sin(this.ship.a)*7, life: 60});
+            this.lastShot = true;
+            audio.play('SHOOT');
+        }
+        if(!keys[' ']) this.lastShot = false;
+
+        // Physics Ship
+        this.ship.x += this.ship.xv; this.ship.y += this.ship.yv;
+        // Friction? Nah, space is frictionless. Maybe clamp speed?
+        this.ship.xv *= 0.99; this.ship.yv *= 0.99;
+
+        // Wrap Ship
+        if(this.ship.x < 0) this.ship.x = this.canvas.width; if(this.ship.x > this.canvas.width) this.ship.x = 0;
+        if(this.ship.y < 0) this.ship.y = this.canvas.height; if(this.ship.y > this.canvas.height) this.ship.y = 0;
+
+        // Update Bullets
+        for(let i=this.bullets.length-1; i>=0; i--) {
+            let b = this.bullets[i];
+            b.x += b.xv; b.y += b.yv; b.life--;
+            if(b.x < 0) b.x = this.canvas.width; if(b.x > this.canvas.width) b.x = 0;
+            if(b.y < 0) b.y = this.canvas.height; if(b.y > this.canvas.height) b.y = 0;
+            if(b.life <= 0) this.bullets.splice(i, 1);
+        }
+
+        // Update Asteroids
+        for(let i=this.asteroids.length-1; i>=0; i--) {
+            let a = this.asteroids[i];
+            a.x += a.xv; a.y += a.yv;
+            if(a.x < -a.r) a.x = this.canvas.width+a.r; if(a.x > this.canvas.width+a.r) a.x = -a.r;
+            if(a.y < -a.r) a.y = this.canvas.height+a.r; if(a.y > this.canvas.height+a.r) a.y = -a.r;
+
+            // Collision Ship
+            let d = Math.sqrt((this.ship.x - a.x)**2 + (this.ship.y - a.y)**2);
+            if(d < a.r + this.ship.r) {
+                this.state = 'GAMEOVER';
+                this.shake = 30;
+                this.spawnParticles(this.ship.x, this.ship.y, CONSTANTS.COLOR_FG, 3);
+                const isRecord = app.saveHighScore('ASTEROIDS', this.score);
+                app.showGameMessage(isRecord ? "NEW RECORD" : "HULL BREACH", "SCORE: " + this.score);
+                audio.playNoise(0.4, 0.25);
+            }
+
+            // Collision Bullet
+            for(let j=this.bullets.length-1; j>=0; j--) {
+                let b = this.bullets[j];
+                let db = Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2);
+                if(db < a.r) {
+                    // Hit
+                    this.bullets.splice(j, 1);
+                    this.asteroids.splice(i, 1);
+                    this.score += 100;
+                    this.shake = 10;
+                    this.spawnParticles(a.x, a.y, CONSTANTS.COLOR_HARD);
+                    audio.play('HIT');
+                    
+                    // Split
+                    if(a.r > 20) {
+                        this.spawnAsteroid(a.x, a.y, a.r/2);
+                        this.spawnAsteroid(a.x, a.y, a.r/2);
+                    }
+                    // Win?
+                    if(this.asteroids.length === 0) {
+                        this.spawnAsteroid(Math.random()*this.canvas.width, 0, 40); // Respawn infinite
+                    }
+                    break;
+                }
+            }
+        }
+
+        this.particles.forEach(p => p.update());
+        this.particles = this.particles.filter(p => p.life > 0);
+        if(this.shake > 0) this.shake *= 0.9;
+    }
+
+    spawnParticles(x, y, c, scale=1) { for(let i=0; i<10; i++) this.particles.push(new Particle(x, y, c, scale)); }
+
+    draw() {
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+
+        // Score
+        this.ctx.font = "bold 30px 'Courier New'";
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText("SCORE: " + this.score, 20, 40);
+        // HI SCORE
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText("HI: " + app.getHighScore('ASTEROIDS'), this.canvas.width - 20, 40);
+
+        // Ship
+        if(this.state !== 'GAMEOVER') {
+            this.ctx.save();
+            this.ctx.translate(this.ship.x, this.ship.y);
+            this.ctx.rotate(this.ship.a);
+            this.ctx.strokeStyle = CONSTANTS.COLOR_FG;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(15, 0);
+            this.ctx.lineTo(-10, 10);
+            this.ctx.lineTo(-5, 0);
+            this.ctx.lineTo(-10, -10);
+            this.ctx.closePath();
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+
+        // Asteroids
+        this.ctx.strokeStyle = CONSTANTS.COLOR_HARD;
+        this.ctx.lineWidth = 2;
+        for(let a of this.asteroids) {
+            this.ctx.save();
+            this.ctx.translate(a.x, a.y);
+            this.ctx.beginPath();
+            this.ctx.moveTo(a.vert[0].x, a.vert[0].y);
+            for(let i=1; i<a.vert.length; i++) this.ctx.lineTo(a.vert[i].x, a.vert[i].y);
+            this.ctx.closePath();
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+
+        // Bullets
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        for(let b of this.bullets) this.ctx.fillRect(b.x-2, b.y-2, 4, 4);
+
+        this.particles.forEach(p => p.draw(this.ctx));
+        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
+        this.ctx.restore();
+    }
+}
+
+// ==========================================
+// MAIN HUB SYSTEM
+// ==========================================
+class App {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.input = new InputSystem();
+        this.currentGame = null;
+        this.animationId = null;
+
+        this.uiMenu = document.getElementById('main-menu');
+        this.uiMessage = document.getElementById('game-message');
+        this.uiBack = document.getElementById('back-btn');
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        // Fond animé du menu
+        this.menuParticles = [];
+        this.loop = this.loop.bind(this);
+        this.animationId = requestAnimationFrame(this.loop);
+    }
+
+    // --- HIGH SCORE SYSTEM ---
+    getHighScore(game) {
+        return parseInt(localStorage.getItem('PLAY_HI_' + game) || 0);
+    }
+
+    saveHighScore(game, score) {
+        let best = this.getHighScore(game);
+        if(score > best) {
+            localStorage.setItem('PLAY_HI_' + game, score);
+            return true; // New Record!
+        }
+        return false;
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    launch(gameType) {
+        // Cacher Menu, Montrer Retour
+        this.uiMenu.style.display = 'none';
+        this.uiBack.style.display = 'block';
+        
+        // Initialiser l'audio au lancement d'un jeu si pas déjà fait
+        audio.init();
+        audio.play('UI_CLICK');
+
+        if (gameType === 'PONG') {
+            this.currentGame = new PongEngine(this.canvas, this.ctx);
+        } else if (gameType === 'BREAKOUT') {
+            this.currentGame = new BreakoutEngine(this.canvas, this.ctx);
+        } else if (gameType === 'SNAKE') {
+            this.currentGame = new SnakeEngine(this.canvas, this.ctx);
+        } else if (gameType === 'INVADERS') {
+            this.currentGame = new SpaceInvadersEngine(this.canvas, this.ctx);
+        } else if (gameType === 'TETRIS') {
+            this.currentGame = new TetrisEngine(this.canvas, this.ctx);
+        } else if (gameType === 'ASTEROIDS') {
+            this.currentGame = new AsteroidsEngine(this.canvas, this.ctx);
+        }
+    }
+
+    loadMenu() {
+        this.currentGame = null;
+        this.uiMenu.style.display = 'block';
+        this.uiBack.style.display = 'none';
+        this.hideGameMessage();
+        // Reset canvas
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+        audio.play('UI_CLICK');
+    }
+
+    showGameMessage(title, sub) {
+        this.uiMessage.style.display = 'block';
+        document.getElementById('msg-title').innerText = title;
+        document.getElementById('msg-sub').innerText = sub;
+    }
+
+    hideGameMessage() {
+        this.uiMessage.style.display = 'none';
+    }
+
+    loop() {
+        if (this.currentGame) {
+            this.currentGame.update();
+            this.currentGame.draw();
+        } else {
+            // Menu Background Loop
+            this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+            this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+            
+            // Effet Matrix/Pluie verte subtile
+            if(Math.random() < 0.1) {
+                this.menuParticles.push(new Particle(Math.random()*this.canvas.width, 0, CONSTANTS.COLOR_FG));
+            }
+            this.menuParticles.forEach(p => {
+                p.y += 5;
+                p.life -= 0.005;
+                p.draw(this.ctx);
+            });
+            this.menuParticles = this.menuParticles.filter(p => p.life > 0);
+            
+            // Scanlines
+            this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
+        }
+        requestAnimationFrame(this.loop);
+    }
+}
+
+// Initialisation
+const app = new App();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PONG // BRUTALIST_EDITION</title>
+    <style>
+        /* --- ESTHÉTIQUE BRUTALISTE CSS --- */
+        :root {
+            --bg-color: #050505;
+            --accent-color: #CCFF00; /* Vert Acide */
+            --text-color: #EEEEEE;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            overflow: hidden; /* Empêche le scroll */
+            cursor: crosshair; /* Curseur précis */
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Message d'intro */
+        #ui-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            color: var(--accent-color);
+            mix-blend-mode: difference;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 4rem;
+            text-transform: uppercase;
+            letter-spacing: -5px;
+            margin: 0;
+            border: 4px solid var(--accent-color);
+            padding: 20px;
+            background: #000;
+        }
+
+        p {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: var(--accent-color);
+            color: #000;
+            display: inline-block;
+            padding: 5px 10px;
+            margin-top: 10px;
+        }
+
+        /* BOUTON PAUSE */
+        #pause-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #000;
+            color: var(--accent-color);
+            border: 4px solid var(--accent-color);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            padding: 5px 15px;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.1s;
+            box-shadow: 5px 5px 0px rgba(0,0,0,0.5);
+        }
+
+        #pause-btn:hover {
+            background: var(--accent-color);
+            color: #000;
+            transform: translate(-2px, -2px);
+            box-shadow: 7px 7px 0px rgba(0,0,0,0.5);
+        }
+
+        #pause-btn:active {
+            transform: translate(0, 0);
+            box-shadow: 0 0 0;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="pause-btn">II</button>
+
+    <div id="ui-layer">
+        <h1 id="start-msg">CLICK TO START</h1>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+/**
+ * PONG // BRUTALIST MAXIMALIST
+ * Concept: High Contrast, High Juice, Raw Physics
+ * Author: Gemini Creative Technologist
+ */
+
+// --- CONFIGURATION ---
+const CONSTANTS = {
+    COLOR_BG: '#050505',
+    COLOR_FG: '#CCFF00', // Vert acide
+    COLOR_SEC: '#FF0055', // Rose néon (pour les effets critiques)
+    PADDLE_WIDTH: 20,
+    PADDLE_HEIGHT: 120,
+    BALL_SIZE: 16,
+    PARTICLE_COUNT: 20,
+    SHAKE_DECAY: 0.9,
+    GLITCH_CHANCE: 0.02,
+    FONT_SIZE_SCORE: '40vh', // Viewport Height pour un score géant
+    // Difficulty Settings
+    AI_LERP: 0.055,   // Plus bas = IA plus lente/humaine (était 0.09)
+    BALL_SPEED_START: 7, // Vitesse de départ plus lente (était 10)
+    BALL_ACCEL: 0.5,   // Accélération par rebond réduite (était 1.5)
+    WIN_SCORE: 5       // Score pour gagner
+};
+
+// --- MOTEUR DE JEU (CLASSES) ---
+
+class Input {
+    constructor() {
+        this.y = window.innerHeight / 2;
+        this.isPlaying = false;
+
+        document.addEventListener('mousemove', (e) => {
+            this.y = e.clientY;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            this.y = e.touches[0].clientY;
+            e.preventDefault();
+        }, { passive: false });
+
+        // Démarrage du jeu au clic sur le canvas ou l'overlay, pas sur le bouton pause
+        document.addEventListener('click', (e) => {
+            if (e.target.id !== 'pause-btn') {
+                if (game.gameOver) {
+                    game.restart();
+                } else if (!this.isPlaying) {
+                    this.isPlaying = true;
+                    document.getElementById('ui-layer').style.display = 'none';
+                    game.resetBall();
+                }
+            }
+        });
+    }
+}
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 8 + 4; // Particules carrées et grosses
+        // Vitesse explosive aléatoire
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.life = 1.0;
+        this.decay = Math.random() * 0.03 + 0.01;
+        this.color = color;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life;
+        // Pas de cercles. Des carrés bruts.
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.restore();
+    }
+}
+
+class Paddle {
+    constructor(isPlayer) {
+        this.isPlayer = isPlayer;
+        this.width = CONSTANTS.PADDLE_WIDTH;
+        this.height = CONSTANTS.PADDLE_HEIGHT;
+        this.x = isPlayer ? 50 : window.innerWidth - 50 - this.width;
+        this.y = window.innerHeight / 2 - this.height / 2;
+        this.vy = 0;
+        this.score = 0;
+    }
+
+    update(targetY, ball) {
+        const center = this.y + this.height / 2;
+
+        if (this.isPlayer) {
+            // Le joueur suit la souris directement (raw input)
+            // On limite juste pour ne pas sortir de l'écran
+            this.y = targetY - this.height / 2;
+        } else {
+            // IA : Interpolation linéaire (Lerp) pour simuler un temps de réaction
+            // Plus le lerp est bas, plus l'IA est "lente/humaine"
+            let target = ball.y;
+            
+            // "Erreur" artificielle de l'IA si la balle est loin
+            if (Math.abs(ball.x - this.x) > window.innerWidth * 0.6) {
+                target = window.innerHeight / 2; 
+            }
+
+            const lerpFactor = CONSTANTS.AI_LERP; 
+            this.y += (target - center) * lerpFactor;
+        }
+
+        // Collisions avec les murs
+        if (this.y < 0) this.y = 0;
+        if (this.y + this.height > window.innerHeight) this.y = window.innerHeight - this.height;
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = CONSTANTS.COLOR_FG;
+        // Ombre portée dure (Hard Shadow)
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 10;
+        ctx.shadowOffsetY = 10;
+        
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+}
+
+class Ball {
+    constructor() {
+        this.size = CONSTANTS.BALL_SIZE;
+        this.isResetting = false; // Flag pour empêcher le score multiple
+        this.reset();
+        this.trail = []; // Pour l'effet de traînée
+    }
+
+    reset() {
+        this.x = window.innerWidth / 2;
+        this.y = window.innerHeight / 2;
+        this.speed = CONSTANTS.BALL_SPEED_START; 
+        // Direction aléatoire mais pas trop verticale
+        const angle = (Math.random() * Math.PI / 4) - (Math.PI / 8); 
+        const dirX = Math.random() < 0.5 ? 1 : -1;
+        
+        this.vx = Math.cos(angle) * this.speed * dirX;
+        this.vy = Math.sin(angle) * this.speed;
+        this.trail = [];
+        this.isResetting = false;
+    }
+
+    update(p1, p2) {
+        // Si la balle est en train d'être remise à zéro, on ne fait rien
+        if (this.isResetting) return;
+
+        // Sauvegarde position pour la traînée (effet visuel)
+        this.trail.push({x: this.x, y: this.y});
+        if (this.trail.length > 10) this.trail.shift();
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Rebond haut/bas
+        if (this.y <= 0 || this.y + this.size >= window.innerHeight) {
+            this.vy *= -1;
+            game.addShake(10); // Petit shake sur les murs
+            game.spawnParticles(this.x, this.y, CONSTANTS.COLOR_FG);
+        }
+
+        // Collision Raquettes (AABB simple)
+        let paddle = this.vx < 0 ? p1 : p2;
+        
+        if (
+            this.x < paddle.x + paddle.width &&
+            this.x + this.size > paddle.x &&
+            this.y < paddle.y + paddle.height &&
+            this.y + this.size > paddle.y
+        ) {
+            // Calcul de l'angle de rebond basé sur l'impact relative
+            // Impact au centre = 0 deg, Impact aux bords = 45 deg
+            let collidePoint = (this.y + this.size/2) - (paddle.y + paddle.height/2);
+            collidePoint = collidePoint / (paddle.height/2);
+            
+            let angleRad = (Math.PI / 4) * collidePoint;
+            
+            // Augmentation de la vitesse (Gameplay Loop)
+            this.speed += CONSTANTS.BALL_ACCEL; 
+            if(this.speed > 25) this.speed = 25; // Cap vitesse max
+
+            let direction = (this.x < window.innerWidth / 2) ? 1 : -1;
+            
+            this.vx = direction * this.speed * Math.cos(angleRad);
+            this.vy = this.speed * Math.sin(angleRad);
+
+            // THE JUICE : Shake et Particules
+            game.addShake(20);
+            game.spawnParticles(this.x, this.y, CONSTANTS.COLOR_FG);
+        }
+
+        // Score
+        if (this.x < 0) {
+            this.isResetting = true; 
+            p2.score++; 
+            game.checkWin();
+            if (!game.gameOver) game.onScore();
+        } else if (this.x > window.innerWidth) {
+            this.isResetting = true;
+            p1.score++; 
+            game.checkWin();
+            if (!game.gameOver) game.onScore();
+        }
+    }
+
+    draw(ctx) {
+        // Dessin de la traînée (Trail)
+        for (let i = 0; i < this.trail.length; i++) {
+            const t = this.trail[i];
+            const alpha = i / this.trail.length;
+            ctx.fillStyle = CONSTANTS.COLOR_FG;
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.fillRect(t.x, t.y, this.size, this.size);
+        }
+        ctx.globalAlpha = 1;
+
+        // Dessin de la balle
+        ctx.fillStyle = CONSTANTS.COLOR_FG;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+    }
+}
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+
+        this.input = new Input();
+        this.player = new Paddle(true);
+        this.ai = new Paddle(false);
+        this.ball = new Ball();
+        
+        this.particles = [];
+        this.shake = 0;
+        this.glitchIntensity = 0;
+        this.paused = false;
+        this.gameOver = false;
+        this.winner = null; // 'P1' or 'CPU'
+
+        window.addEventListener('resize', () => this.resize());
+        
+        // Gestion Pause
+        this.togglePause = this.togglePause.bind(this);
+        document.getElementById('pause-btn').addEventListener('click', this.togglePause);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P') this.togglePause();
+        });
+
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        // Mise à jour position IA si redimensionnement
+        if (this.ai) this.ai.x = window.innerWidth - 50 - CONSTANTS.PADDLE_WIDTH;
+    }
+
+    togglePause() {
+        if (!this.input.isPlaying || this.gameOver) return;
+        this.paused = !this.paused;
+    }
+
+    addShake(amount) {
+        this.shake = amount;
+    }
+
+    spawnParticles(x, y, color) {
+        for (let i = 0; i < CONSTANTS.PARTICLE_COUNT; i++) {
+            this.particles.push(new Particle(x, y, color));
+        }
+    }
+
+    checkWin() {
+        if (this.player.score >= CONSTANTS.WIN_SCORE) {
+            this.gameOver = true;
+            this.winner = 'P1';
+            this.addShake(50); // Gros shake de victoire
+            this.spawnParticles(this.canvas.width/2, this.canvas.height/2, CONSTANTS.COLOR_FG);
+        } else if (this.ai.score >= CONSTANTS.WIN_SCORE) {
+            this.gameOver = true;
+            this.winner = 'CPU';
+            this.addShake(50);
+            this.spawnParticles(this.canvas.width/2, this.canvas.height/2, CONSTANTS.COLOR_SEC);
+        }
+    }
+
+    restart() {
+        this.player.score = 0;
+        this.ai.score = 0;
+        this.gameOver = false;
+        this.winner = null;
+        this.paused = false;
+        this.resetBall();
+    }
+
+    onScore() {
+        this.addShake(40);
+        this.glitchIntensity = 20; // Gros glitch visuel
+        this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_SEC);
+        setTimeout(() => {
+            if(!this.gameOver) this.resetBall();
+        }, 500); // Pause dramatique avant reset
+    }
+
+    resetBall() {
+        this.ball.reset();
+        this.glitchIntensity = 0;
+    }
+
+    update() {
+        if (!this.input.isPlaying || this.paused || this.gameOver) return;
+
+        this.player.update(this.input.y, this.ball);
+        this.ai.update(null, this.ball);
+        this.ball.update(this.player, this.ai);
+
+        // Gestion particules
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            this.particles[i].update();
+            if (this.particles[i].life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+
+        // Decay Shake
+        if (this.shake > 0) this.shake *= CONSTANTS.SHAKE_DECAY;
+        if (this.shake < 0.5) this.shake = 0;
+
+        // Decay Glitch
+        if (this.glitchIntensity > 0) this.glitchIntensity *= 0.9;
+    }
+
+    draw() {
+        // --- 1. Effacement ---
+        this.ctx.fillStyle = CONSTANTS.COLOR_BG;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.save();
+
+        // --- 2. Screen Shake ---
+        if (this.shake > 0 && !this.paused) {
+            const dx = (Math.random() - 0.5) * this.shake;
+            const dy = (Math.random() - 0.5) * this.shake;
+            this.ctx.translate(dx, dy);
+        }
+
+        // --- 3. Dessin du Score (Arrière-plan géant) ---
+        this.ctx.font = `bold ${CONSTANTS.FONT_SIZE_SCORE} 'Courier New', monospace`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillStyle = '#1a1a1a'; // Gris très foncé
+        
+        // Scores
+        this.ctx.fillText(this.player.score, this.canvas.width * 0.25, this.canvas.height / 2);
+        this.ctx.fillText(this.ai.score, this.canvas.width * 0.75, this.canvas.height / 2);
+
+        // Labels P1 / CPU
+        if (!this.gameOver) {
+            this.ctx.font = `bold 20px 'Courier New', monospace`;
+            this.ctx.fillStyle = '#333'; 
+            this.ctx.fillText("P1", this.canvas.width * 0.25, this.canvas.height / 2 - 150);
+            this.ctx.fillText("CPU", this.canvas.width * 0.75, this.canvas.height / 2 - 150);
+        }
+
+        // --- 4. Ligne centrale Brutaliste ---
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = '#1a1a1a';
+        this.ctx.lineWidth = 10;
+        this.ctx.moveTo(this.canvas.width / 2, 0);
+        this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
+        this.ctx.stroke();
+
+        // --- 5. Éléments du jeu ---
+        // On dessine toujours le jeu en fond même si game over, pour le style
+        if (this.input.isPlaying) {
+            this.player.draw(this.ctx);
+            this.ai.draw(this.ctx);
+            this.ball.draw(this.ctx);
+            this.particles.forEach(p => p.draw(this.ctx));
+        }
+
+        // --- 6. Post-Processing / Glitch Effect ---
+        if (!this.paused) {
+            // Scanlines
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            for (let i = 0; i < this.canvas.height; i += 4) {
+                this.ctx.fillRect(0, i, this.canvas.width, 2);
+            }
+
+            // Glitch aléatoire
+            if (this.glitchIntensity > 1 || Math.random() < CONSTANTS.GLITCH_CHANCE) {
+                const h = Math.random() * 50;
+                const y = Math.random() * this.canvas.height;
+                try {
+                    const imageData = this.ctx.getImageData(0, y, this.canvas.width, h);
+                    const offset = (Math.random() - 0.5) * (this.glitchIntensity + 20);
+                    this.ctx.putImageData(imageData, offset, y);
+                } catch(e) { /* Ignore */ }
+                
+                this.ctx.fillStyle = Math.random() > 0.5 ? CONSTANTS.COLOR_FG : CONSTANTS.COLOR_SEC;
+                this.ctx.globalCompositeOperation = 'difference';
+                this.ctx.fillRect(Math.random() * this.canvas.width, Math.random() * this.canvas.height, Math.random() * 100, 5);
+                this.ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+
+        // --- 7. OVERLAYS (PAUSE / GAME OVER) ---
+        
+        if (this.gameOver) {
+            // Fond semi-transparent teinté
+            // Si P1 gagne : Vert, Sinon : Rouge
+            const isWin = this.winner === 'P1';
+            this.ctx.fillStyle = isWin ? 'rgba(20, 40, 0, 0.85)' : 'rgba(40, 0, 10, 0.85)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+
+            // TITRE
+            this.ctx.save();
+            this.ctx.font = "bold 80px 'Courier New', monospace";
+            this.ctx.fillStyle = isWin ? CONSTANTS.COLOR_FG : CONSTANTS.COLOR_SEC;
+            // Effet de tremblement sur le texte
+            const shakeText = (Math.random() - 0.5) * 4;
+            this.ctx.translate(shakeText, shakeText);
+            
+            const mainText = isWin ? "VICTORY" : "DEFEAT";
+            this.ctx.fillText(mainText, this.canvas.width / 2, this.canvas.height / 2 - 20);
+            this.ctx.restore();
+
+            // Sous-texte
+            this.ctx.font = "bold 24px 'Courier New', monospace";
+            this.ctx.fillStyle = "#FFF";
+            this.ctx.fillText("CLICK TO RESTART", this.canvas.width / 2, this.canvas.height / 2 + 60);
+
+        } else if (this.paused) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.font = "bold 60px 'Courier New', monospace";
+            this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText("PAUSED", this.canvas.width / 2, this.canvas.height / 2);
+        }
+
+        this.ctx.restore();
+    }
+
+    loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(this.loop);
+    }
+}
+
+// Lancement
+const game = new Game();
+
+</script>
+</body>
+</html>

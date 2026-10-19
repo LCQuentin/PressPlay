@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Renault Captur Arcade</title>
+    <style>
+        /* --- CSS : Le Style Arcade --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        h1 {
+            text-shadow: 2px 2px #000;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 4px solid #f1c40f; /* Bordure jaune arcade */
+            border-radius: 4px;
+        }
+
+        canvas {
+            background-color: #555; /* Couleur de la route */
+            display: block;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Laisse passer les clics vers le canvas si besoin */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hidden { display: none !important; }
+
+        #startScreen, #gameOverScreen {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        button {
+            background: #e67e22;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+
+        button:hover { transform: scale(1.05); background: #d35400; }
+
+        #scoreBoard {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CAPTUR 1 BEIGE RUSH</h1>
+
+    <div id="gameContainer">
+        <div id="scoreBoard">Score: 0</div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        
+        <div id="ui-layer">
+            <div id="startScreen">
+                <h2>Prêt à conduire ?</h2>
+                <p>Évite les voitures rouges !</p>
+                <p>Contrôles : Flèches Gauche / Droite</p>
+                <button onclick="startGame()">Démarrer le Moteur</button>
+            </div>
+            <div id="gameOverScreen" class="hidden">
+                <h2 style="color: #e74c3c;">ACCIDENT !</h2>
+                <p>Score final : <span id="finalScore">0</span></p>
+                <button onclick="startGame()">Réessayer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- JAVASCRIPT : La Logique du Jeu --- */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // États du jeu
+        let gameRunning = false;
+        let score = 0;
+        let speed = 5;
+        let animationId;
+
+        // Configuration de la voiture (Le Captur Beige)
+        const player = {
+            w: 50,
+            h: 80,
+            x: 175, // Centre (400/2 - 50/2)
+            y: 500,
+            colorBody: '#E6D8AD', // Beige Captur (Ivoire)
+            colorRoof: '#222',    // Toit noir (option bi-ton classique)
+            speed: 5,
+            dx: 0
+        };
+
+        // Gestion des obstacles
+        let obstacles = [];
+        const obstacleFrequency = 60; // Frames entre chaque voiture
+        let frameCount = 0;
+
+        // Gestion des entrées clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') player.dx = player.speed;
+            if (e.key === 'ArrowLeft') player.dx = -player.speed;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') player.dx = 0;
+        });
+
+        // Fonction pour dessiner le Renault Captur (Style Arcade)
+        function drawCaptur(x, y) {
+            // Ombre
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(x + 5, y + 5, player.w, player.h);
+
+            // Carrosserie Beige (coins arrondis si supporté, sinon rectangle plein)
+            ctx.fillStyle = player.colorBody;
+            if (typeof ctx.roundRect === 'function') {
+                ctx.beginPath();
+                ctx.roundRect(x, y, player.w, player.h, 10); // Coins arrondis
+                ctx.fill();
+            } else {
+                ctx.fillRect(x, y, player.w, player.h);
+            }
+
+            // Toit / Pare-brise (Bi-ton noir)
+            ctx.fillStyle = player.colorRoof;
+            ctx.fillRect(x + 5, y + 20, player.w - 10, 30);
+
+            // Capot (détail)
+            ctx.fillStyle = '#dccba0'; // Beige un peu plus foncé
+            ctx.fillRect(x + 10, y + 55, player.w - 20, 20);
+
+            // Phares avants
+            ctx.fillStyle = '#fff'; // Blanc xénon
+            ctx.fillRect(x + 2, y + 2, 10, 5);
+            ctx.fillRect(x + player.w - 12, y + 2, 10, 5);
+
+            // Feux arrières
+            ctx.fillStyle = '#c0392b'; // Rouge
+            ctx.fillRect(x + 2, y + player.h - 5, 8, 5);
+            ctx.fillRect(x + player.w - 10, y + player.h - 5, 8, 5);
+            
+            // Logo Renault (abstrait)
+            ctx.fillStyle = 'silver';
+            ctx.beginPath();
+            ctx.moveTo(x + player.w/2, y + 60);
+            ctx.lineTo(x + player.w/2 - 3, y + 65);
+            ctx.lineTo(x + player.w/2, y + 70);
+            ctx.lineTo(x + player.w/2 + 3, y + 65);
+            ctx.fill();
+        }
+
+        // Fonction pour dessiner les obstacles (Voitures standards)
+        function drawObstacle(obs) {
+            ctx.fillStyle = obs.color;
+            // Forme simple
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            // Vitres
+            ctx.fillStyle = '#888';
+            ctx.fillRect(obs.x + 5, obs.y + 10, obs.w - 10, 15);
+            ctx.fillRect(obs.x + 5, obs.y + obs.h - 20, obs.w - 10, 10);
+        }
+
+        // Dessiner la route
+        let lineOffset = 0;
+        function drawRoad() {
+            // Asphalte
+            ctx.fillStyle = '#555';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Lignes de côté
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(10, 0, 10, canvas.height);
+            ctx.fillRect(canvas.width - 20, 0, 10, canvas.height);
+
+            // Ligne centrale pointillée
+            ctx.fillStyle = '#fff';
+            for (let i = -50; i < canvas.height; i += 40) {
+                ctx.fillRect(canvas.width / 2 - 5, i + lineOffset, 10, 20);
+            }
+            
+            // Animation de la route
+            lineOffset += speed;
+            if (lineOffset >= 40) lineOffset -= 40;
+        }
+
+        function update() {
+            // Déplacement Joueur
+            player.x += player.dx;
+
+            // Limites de la route (Collisions murs)
+            if (player.x < 20) player.x = 20;
+            if (player.x + player.w > canvas.width - 20) player.x = canvas.width - 20 - player.w;
+
+            // Génération Obstacles
+            frameCount++;
+            const spawnEvery = Math.max(1, Math.floor(1000 / (speed * 10)));
+            if (frameCount % spawnEvery === 0 || (frameCount > 100 && obstacles.length === 0)) {
+                // Créer un obstacle aléatoire
+                const obsX = Math.random() * (canvas.width - 70) + 20; // Position aléatoire
+                obstacles.push({
+                    x: obsX,
+                    y: -100,
+                    w: 50,
+                    h: 80,
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)` // Couleur aléatoire
+                });
+                frameCount = 0;
+            }
+
+            // Mise à jour Obstacles (parcours à rebours : le splice est sûr)
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.y += speed; // Vitesse relative (la route défile)
+
+                // Suppression si hors écran
+                if (obs.y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    score += 10;
+                    document.getElementById('scoreBoard').innerText = `Score: ${score}`;
+
+                    // Augmentation de la difficulté
+                    if (score % 100 === 0) speed += 0.5;
+                    continue;
+                }
+
+                // Détection Collision (AABB)
+                if (
+                    player.x < obs.x + obs.w &&
+                    player.x + player.w > obs.x &&
+                    player.y < obs.y + obs.h &&
+                    player.y + player.h > obs.y
+                ) {
+                    gameOver();
+                    return;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawRoad();
+            drawCaptur(player.x, player.y);
+            obstacles.forEach(drawObstacle);
+        }
+
+        function loop() {
+            if (!gameRunning) return;
+            update();
+            draw();
+            animationId = requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+            // Reset
+            gameRunning = true;
+            score = 0;
+            speed = 5;
+            frameCount = 0;
+            lineOffset = 0;
+            obstacles = [];
+            player.x = 175;
+            document.getElementById('scoreBoard').innerText = 'Score: 0';
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            
+            // Lancer la boucle
+            loop();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        // Premier dessin statique pour l'ambiance
+        drawRoad();
+        drawCaptur(player.x, player.y);
+
+    </script>
+</body>
+</html>
