@@ -8,14 +8,14 @@ Esthétique brutaliste : noir profond, vert acide (`#CCFF00`), typo monospace, s
 
 | Fichier | Jeu | Contrôles |
 | --- | --- | --- |
-| `hub.html` | Borne arcade (6 jeux) | souris / clavier selon le jeu |
+| `hub.html` | Borne arcade (6 jeux) | souris / clavier selon le jeu, `P` ou bouton `PAUSE` |
 | `pong.html` | Pong — édition brutaliste | souris / tactile, `P` pour pause |
 | `captur.html` | Renault Captur Arcade (course d'évitement) | flèches gauche / droite |
 
 ### Jeux du hub
 
 - **Pong** — premiers à 5 points. Souris.
-- **Breakout** — raquette à la souris, 3 vies, briques dures, bonus (vie / multi-balle).
+- **Breakout** — 5 niveaux, raquette à la souris, briques dures, bonus (vie, multi-balle, raquette géante, ralenti, roquettes, balle de feu) et malus (accélération, raquette réduite). Clic = roquette, `P` = pause.
 - **Snake** — flèches pour démarrer et se déplacer.
 - **Space Invaders** — flèches pour bouger, `Espace` pour tirer.
 - **Tetris** — flèches, `Haut` = rotation, `Espace` = chute rapide.
@@ -39,6 +39,7 @@ python3 -m http.server
 
 - **Audio** : synthèse procédurale via la Web Audio API (`AudioController`) — aucun fichier son. Bouton `AUDIO: ON/OFF` dans le hub.
 - **Scores** : meilleurs scores persistés par jeu dans `localStorage` (`PLAY_HI_<GAME>`).
+- **Pause** : bouton `PAUSE`, touche `P` ou `Échap` dans le hub — physique, timers et effets sont gelés.
 - **Rendu** : un seul `<canvas>` plein écran, boucle `requestAnimationFrame`, particules, screen shake, scanlines.
 
 ## Licence
