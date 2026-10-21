@@ -498,6 +498,8 @@ class PongEngine {
         this.paddleH = 120;
         this.paddleW = 20;
         this.ballSize = 16;
+        this.aiMaxSpeed = 9;
+        this.aiError = 0;
         this.reset();
     }
 
@@ -521,6 +523,8 @@ class PongEngine {
         const dirX = Math.random() < 0.5 ? 1 : -1;
         this.ball.vx = Math.cos(angle) * this.ball.speed * dirX;
         this.ball.vy = Math.sin(angle) * this.ball.speed;
+        this.ball.edgeTimer = 0;
+        this.aiError = 0;
     }
 
     handleClick() {
@@ -541,29 +545,60 @@ class PongEngine {
         if (this.state !== 'PLAYING') return;
         this.p1.y = app.input.y - this.paddleH/2;
         let target = this.ball.y - this.paddleH/2;
-        if (Math.abs(this.ball.x - (this.canvas.width - 50)) > this.canvas.width * 0.6) { target = this.canvas.height / 2; }
-        this.ai.y += (target - this.ai.y) * 0.08;
+        if (Math.abs(this.ball.x - (this.canvas.width - 50)) > this.canvas.width * 0.6) {
+            target = this.canvas.height / 2;
+        } else {
+            target += this.aiError;
+        }
+        let aiDelta = (target - this.ai.y) * 0.08;
+        aiDelta = Math.max(-this.aiMaxSpeed, Math.min(this.aiMaxSpeed, aiDelta));
+        this.ai.y += aiDelta;
         [this.p1, this.ai].forEach(p => {
             if(p.y < 0) p.y = 0;
             if(p.y + this.paddleH > this.canvas.height) p.y = this.canvas.height - this.paddleH;
         });
         this.ball.x += this.ball.vx;
         this.ball.y += this.ball.vy;
-        if (this.ball.y <= 0 || this.ball.y + this.ballSize >= this.canvas.height) {
-            this.ball.vy *= -1;
-            this.shake = 10;
-            audio.play('WALL');
+        if (this.ball.y <= 0) {
+            this.ball.y = 0;
+            if (this.ball.vy < 0) {
+                this.ball.vy *= -1;
+                this.shake = 10;
+                audio.play('WALL');
+            }
+        } else if (this.ball.y + this.ballSize >= this.canvas.height) {
+            this.ball.y = this.canvas.height - this.ballSize;
+            if (this.ball.vy > 0) {
+                this.ball.vy *= -1;
+                this.shake = 10;
+                audio.play('WALL');
+            }
+        }
+        if (this.ball.y <= 2 || this.ball.y + this.ballSize >= this.canvas.height - 2) {
+            this.ball.edgeTimer = (this.ball.edgeTimer || 0) + 1;
+            if (this.ball.edgeTimer > 90) {
+                if (this.ball.y <= 2 && Math.abs(this.ball.vy) < 1) this.ball.vy = 2;
+                if (this.ball.y + this.ballSize >= this.canvas.height - 2 && Math.abs(this.ball.vy) < 1) this.ball.vy = -2;
+                this.ball.edgeTimer = 0;
+            }
+        } else {
+            this.ball.edgeTimer = 0;
         }
         const checkPaddle = (p, x) => {
             return (this.ball.y + this.ballSize > p.y && this.ball.y < p.y + this.paddleH && Math.abs(this.ball.x - x) < this.paddleW + 10);
         };
         if (this.ball.vx < 0 && this.ball.x < 50 + this.paddleW && checkPaddle(this.p1, 50)) {
-            this.bounceBall();
+            this.aiError = (Math.random() - 0.5) * (16 + this.ball.speed * 2.5);
+            const blunderChance = 0.08 + Math.max(0, this.ball.speed - 8) * 0.006;
+            if (Math.random() < blunderChance) {
+                this.aiError += (Math.random() < 0.5 ? -1 : 1) * (this.paddleH * 0.9 + Math.random() * this.paddleH * 0.8);
+            }
+            this.bounceBall(this.p1, 1);
             this.shake = 15; this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_FG);
             audio.play('HIT');
         }
         if (this.ball.vx > 0 && this.ball.x > this.canvas.width - 50 - this.paddleW && checkPaddle(this.ai, this.canvas.width - 50 - this.paddleW)) {
-            this.bounceBall();
+            this.bounceBall(this.ai, -1);
             this.shake = 15; this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_HARD);
             audio.play('HIT');
         }
@@ -571,12 +606,14 @@ class PongEngine {
         else if (this.ball.x > this.canvas.width) { this.p1.score++; this.checkWin(); this.resetBall(); this.shake = 30; audio.play('SCORE'); }
     }
 
-    bounceBall() {
-        this.ball.vx *= -1;
+    bounceBall(paddle, dirX) {
+        let hit = (this.ball.y + this.ballSize/2) - (paddle.y + this.paddleH/2);
+        let norm = Math.max(-1, Math.min(1, hit / (this.paddleH/2)));
+        if(Math.abs(norm) < 0.15) norm = (Math.random() < 0.5 ? -1 : 1) * (0.15 + Math.random() * 0.2);
+        const angle = norm * (Math.PI/4);
         this.ball.speed = Math.min(this.ball.speed + 0.5, 20);
-        const mag = Math.hypot(this.ball.vx, this.ball.vy) || 1;
-        this.ball.vx = this.ball.vx / mag * this.ball.speed;
-        this.ball.vy = this.ball.vy / mag * this.ball.speed;
+        this.ball.vx = dirX * this.ball.speed * Math.cos(angle);
+        this.ball.vy = this.ball.speed * Math.sin(angle);
     }
 
     checkWin() {
@@ -862,8 +899,17 @@ class BreakoutEngine {
         for(let i=this.balls.length-1; i>=0; i--) {
             let b = this.balls[i];
             b.x += b.vx; b.y += b.vy;
-            if(b.x <= 0 || b.x+this.ballSize >= this.canvas.width) { b.vx *= -1; audio.play('WALL'); }
-            if(b.y <= 0) { b.vy *= -1; audio.play('WALL'); }
+            if(b.x <= 0) {
+                b.x = 0;
+                if(b.vx < 0) { b.vx *= -1; audio.play('WALL'); }
+            } else if(b.x + this.ballSize >= this.canvas.width) {
+                b.x = this.canvas.width - this.ballSize;
+                if(b.vx > 0) { b.vx *= -1; audio.play('WALL'); }
+            }
+            if(b.y <= 0) {
+                b.y = 0;
+                if(b.vy < 0) { b.vy *= -1; audio.play('WALL'); }
+            }
             if(b.y > this.canvas.height) { this.balls.splice(i, 1); continue; }
             if(b.y+this.ballSize >= this.paddle.y && b.y <= this.paddle.y+this.paddleH && b.x+this.ballSize >= this.paddle.x && b.x <= this.paddle.x+this.paddleW && b.vy > 0) {
                 let hit = (b.x + this.ballSize/2) - (this.paddle.x + this.paddleW/2);
@@ -894,6 +940,17 @@ class BreakoutEngine {
                 }
             } else {
                 b.stuckTimer = 0;
+            }
+            if(b.x <= 2 || b.x + this.ballSize >= this.canvas.width - 2 || b.y <= 2) {
+                b.edgeTimer = (b.edgeTimer || 0) + 1;
+                if(b.edgeTimer > 90) {
+                    if(b.y <= 2 && Math.abs(b.vy) < 1) b.vy = 2;
+                    if(b.x <= 2 && Math.abs(b.vx) < 1) b.vx = 2;
+                    if(b.x + this.ballSize >= this.canvas.width - 2 && Math.abs(b.vx) < 1) b.vx = -2;
+                    b.edgeTimer = 0;
+                }
+            } else {
+                b.edgeTimer = 0;
             }
         }
 
