@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#050505">
     <title>PLAY // HUB</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="PLAY // HUB">
+    <meta property="og:description" content="La borne arcade PressPlay : six jeux rétro, brutalistes et offline.">
+    <meta property="og:image" content="https://lcquentin.github.io/PressPlay/og.png">
+    <meta name="twitter:card" content="summary_large_image">
     <style>
         /* --- ESTHÉTIQUE GLOBALE --- */
         :root {
@@ -123,6 +132,16 @@
             pointer-events: none;
         }
 
+        .menu-controls {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.58rem;
+            letter-spacing: 0;
+            font-weight: normal;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
         /* --- BOUTONS NAV --- */
         #back-btn, #mute-btn, #pause-btn {
             position: absolute;
@@ -202,14 +221,32 @@
         .touch-down { left: 51px; top: 102px; }
         .touch-right { left: 102px; top: 51px; }
 
-        #touch-action-wrap { pointer-events: none; }
+        #touch-action-wrap {
+            position: relative;
+            width: 160px;
+            height: 86px;
+            pointer-events: none;
+        }
 
         #touch-action {
-            position: relative;
+            position: absolute;
+            right: 0;
+            bottom: 0;
             width: 76px;
             height: 76px;
             border-radius: 50%;
             font-size: 0.85rem;
+        }
+
+        #touch-hold {
+            position: absolute;
+            right: 84px;
+            bottom: 8px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: none;
         }
 
         /* --- OVERLAYS JEU --- */
@@ -236,12 +273,180 @@
             .menu-btn { transition: none; }
             button:active { transform: none !important; }
         }
+
+        .menu-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .menu-action {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 0.85rem;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .menu-action:hover, .menu-action:focus-visible { background: var(--accent-color); color: #000; }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(5, 5, 5, 0.88);
+            pointer-events: auto;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            width: min(720px, 100%);
+            max-height: 88vh;
+            overflow-y: auto;
+            background: #050505;
+            border: 4px solid var(--accent-color);
+            box-shadow: 12px 12px 0 var(--secondary-color);
+            padding: 20px;
+        }
+        .modal.small { width: min(420px, 100%); }
+        .modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+        .modal-head button, .modal-body button {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: inherit;
+            font-weight: bold;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .modal-head button:hover, .modal-body button:hover { background: var(--accent-color); color: #000; }
+        .modal-body { font-size: 0.9rem; line-height: 1.45; }
+        .record-game { margin-bottom: 16px; }
+        .record-game h3 { margin: 0 0 6px; font-size: 1rem; color: var(--secondary-color); }
+        .record-row { display: flex; gap: 10px; align-items: baseline; font-size: 0.95rem; }
+        .record-row .pos { width: 2ch; opacity: 0.6; }
+        .record-row .initials { width: 5ch; font-weight: bold; }
+        .record-row .score { margin-left: auto; font-weight: bold; }
+        .record-row .date { opacity: 0.5; font-size: 0.75rem; }
+        .stats-line { border: 2px solid #333; padding: 10px; margin-bottom: 16px; color: var(--secondary-color); }
+        .ach-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .ach { border: 2px solid #333; padding: 8px; opacity: 0.45; }
+        .ach.unlocked { opacity: 1; border-color: var(--accent-color); }
+        .ach strong { display: block; font-size: 0.85rem; }
+        .ach small { color: #aaa; }
+        .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #222; }
+        .setting input[type="range"] { width: 180px; accent-color: var(--accent-color); }
+        .setting input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent-color); }
+        .setting select, .modal-body input[type="text"] {
+            background: #050505;
+            color: var(--accent-color);
+            border: 2px solid var(--accent-color);
+            font-family: inherit;
+            font-size: 1rem;
+            padding: 6px 8px;
+        }
+        #initials-input { width: 100%; text-transform: uppercase; letter-spacing: 0.4em; font-size: 2rem; text-align: center; margin: 16px 0; }
+        #initials-score { text-align: center; font-size: 1.2rem; color: var(--secondary-color); }
+        #toast {
+            position: fixed;
+            left: 50%;
+            bottom: 190px;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 35;
+            background: var(--accent-color);
+            color: #000;
+            font-weight: bold;
+            padding: 10px 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #daily-badge {
+            position: fixed;
+            top: 26px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 19;
+            background: var(--accent-color);
+            color: #000;
+            font-weight: bold;
+            font-size: 0.8rem;
+            padding: 6px 10px;
+            display: none;
+        }
+        body.touch-small #touch-dpad { transform: scale(0.85); transform-origin: left bottom; }
+        body.touch-small #touch-action-wrap { transform: scale(0.85); transform-origin: right bottom; }
+        body.touch-large #touch-dpad { transform: scale(1.12); transform-origin: left bottom; }
+        body.touch-large #touch-action-wrap { transform: scale(1.12); transform-origin: right bottom; }
+        body.no-scanlines::after { display: none !important; }
+
+        #debug-overlay {
+            position: fixed;
+            left: 12px;
+            bottom: 12px;
+            z-index: 60;
+            display: none;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 6px 8px;
+            pointer-events: none;
+            white-space: pre;
+        }
+
+        .choice-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .choice {
+            flex: 1;
+            min-width: 90px;
+            background: transparent;
+            border: 2px solid #333;
+            color: var(--accent-color);
+            font-family: inherit;
+            font-weight: bold;
+            padding: 10px;
+            cursor: pointer;
+        }
+        .choice:hover, .choice.selected { border-color: var(--accent-color); background: var(--accent-color); color: #000; }
+        .start-btn {
+            width: 100%;
+            margin-top: 8px;
+            background: var(--accent-color);
+            border: none;
+            color: #000;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 12px;
+            cursor: pointer;
+        }
+        #pong-overlay.hide-difficulty #pong-difficulty-row { display: none; }
+        @media (prefers-reduced-motion: reduce) { .choice, .start-btn, .menu-action { transition: none; } }
+        body.reduced-motion .menu-btn, body.reduced-motion .menu-action, body.reduced-motion .touch-btn { transition: none; }
     </style>
 </head>
 <body>
 
     <!-- NAV UI -->
-    <button id="back-btn" onclick="app.loadMenu()">← TERMINAL</button>
+    <button id="back-btn" onclick="app.loadMenu()" data-i18n="terminal">← TERMINAL</button>
     <button id="pause-btn" onclick="app.togglePause()" aria-pressed="false">PAUSE</button>
     <button id="mute-btn" onclick="audio.toggleMute()" aria-pressed="false">AUDIO: ON</button>
 
@@ -252,12 +457,17 @@
         <div id="main-menu">
             <h1 class="title">PLAY</h1>
             <div class="grid-menu">
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('PONG')">PONG<span class="menu-hi">FIRST TO 5</span></button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('BREAKOUT')">BREAKOUT<span class="menu-hi" data-hi="BREAKOUT">HI 0</span></button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('SNAKE')">SNAKE<span class="menu-hi" data-hi="SNAKE">HI 0</span></button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('INVADERS')">INVADERS<span class="menu-hi" data-hi="INVADERS">HI 0</span></button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('TETRIS')">TETRIS<span class="menu-hi" data-hi="TETRIS">HI 0</span></button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('ASTEROIDS')">ASTEROIDS<span class="menu-hi" data-hi="ASTEROIDS">HI 0</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.openPongOptions()">PONG<span class="menu-hi" data-i18n="firstTo5">FIRST TO 5</span><span class="menu-controls" data-i18n="ctrl_pong">MOUSE / 2P KEYS</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('BREAKOUT')">BREAKOUT<span class="menu-hi" data-hi="BREAKOUT">HI 0</span><span class="menu-controls" data-i18n="ctrl_breakout">MOUSE + CLICK</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('SNAKE')">SNAKE<span class="menu-hi" data-hi="SNAKE">HI 0</span><span class="menu-controls" data-i18n="ctrl_snake">ARROWS / D-PAD</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('INVADERS')">INVADERS<span class="menu-hi" data-hi="INVADERS">HI 0</span><span class="menu-controls" data-i18n="ctrl_invaders">ARROWS + SPACE</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('TETRIS')">TETRIS<span class="menu-hi" data-hi="TETRIS">HI 0</span><span class="menu-controls" data-i18n="ctrl_tetris">ARROWS + SPACE + C</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('ASTEROIDS')">ASTEROIDS<span class="menu-hi" data-hi="ASTEROIDS">HI 0</span><span class="menu-controls" data-i18n="ctrl_asteroids">ARROWS + SPACE</span></button>
+            </div>
+            <div class="menu-actions">
+                <button class="menu-action" id="daily-btn" onclick="app.launchDaily()">DAILY</button>
+                <button class="menu-action" onclick="app.openRecords()" data-i18n="records">RECORDS</button>
+                <button class="menu-action" onclick="app.openSettings()" data-i18n="settings">SETTINGS</button>
             </div>
         </div>
 
@@ -267,10 +477,68 @@
             <div id="msg-sub" class="sub-msg">CLICK TO START</div>
         </div>
 
-        <div id="pause-overlay">
+        <div id="pause-overlay" role="dialog" aria-modal="true" aria-label="Pause">
             <div class="big-msg">PAUSED</div>
             <div class="sub-msg">PRESS P OR CLICK RESUME</div>
         </div>
+
+        <div id="records-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Records">
+            <div class="modal">
+                <div class="modal-head"><span data-i18n="records">RECORDS</span><button onclick="app.closeModal()" data-i18n="close">CLOSE</button></div>
+                <div id="records-content" class="modal-body"></div>
+            </div>
+        </div>
+
+        <div id="settings-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Réglages">
+            <div class="modal">
+                <div class="modal-head"><span data-i18n="settings">SETTINGS</span><button onclick="app.closeModal()" data-i18n="close">CLOSE</button></div>
+                <div class="modal-body">
+                    <label class="setting"><span data-i18n="volume">VOLUME</span><input id="set-volume" type="range" min="0" max="100" step="5"></label>
+                    <label class="setting"><span data-i18n="scanlines">SCANLINES</span><input id="set-scanlines" type="checkbox"></label>
+                    <label class="setting"><span data-i18n="music">MUSIC</span><input id="set-music" type="checkbox"></label>
+                    <label class="setting"><span data-i18n="haptics">HAPTICS</span><input id="set-haptics" type="checkbox"></label>
+                    <label class="setting"><span data-i18n="reduced">REDUCED MOTION</span><input id="set-reduced" type="checkbox"></label>
+                    <label class="setting"><span data-i18n="touchSize">TOUCH SIZE</span>
+                        <select id="set-touch"><option value="sm" data-i18n="small">SMALL</option><option value="md" data-i18n="medium">MEDIUM</option><option value="lg" data-i18n="large">LARGE</option></select>
+                    </label>
+                    <label class="setting"><span data-i18n="language">LANGUAGE</span>
+                        <select id="set-lang"><option value="en" data-i18n="english">EN</option><option value="fr" data-i18n="french">FR</option></select>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="pong-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pong">
+            <div class="modal small">
+                <div class="modal-head"><span>PONG</span><button onclick="app.closeModal()" data-i18n="close">CLOSE</button></div>
+                <div class="modal-body">
+                    <div class="choice-row">
+                        <button class="choice selected" data-pong-mode="1" onclick="app.setPongMode(1)" data-i18n="onePlayer">1 PLAYER</button>
+                        <button class="choice" data-pong-mode="2" onclick="app.setPongMode(2)" data-i18n="twoPlayers">2 PLAYERS</button>
+                    </div>
+                    <div class="choice-row" id="pong-difficulty-row">
+                        <button class="choice" data-pong-diff="easy" onclick="app.setPongDifficulty('easy')" data-i18n="easy">EASY</button>
+                        <button class="choice selected" data-pong-diff="normal" onclick="app.setPongDifficulty('normal')" data-i18n="normal">NORMAL</button>
+                        <button class="choice" data-pong-diff="hard" onclick="app.setPongDifficulty('hard')" data-i18n="hard">HARD</button>
+                    </div>
+                    <button class="start-btn" onclick="app.startPong()" data-i18n="start">START</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="initials-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Nouveau record">
+            <div class="modal small">
+                <div class="modal-head"><span id="initials-title">NEW RECORD</span><button onclick="app.closeModal()" data-i18n="close">CLOSE</button></div>
+                <div class="modal-body">
+                    <div id="initials-score"></div>
+                    <input id="initials-input" type="text" maxlength="3" autocomplete="off" spellcheck="false" aria-label="Initiales 3 lettres" placeholder="AAA">
+                    <button onclick="app.saveInitials()" data-i18n="save">SAVE</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast" role="status" aria-live="polite"></div>
+        <div id="daily-badge">DAILY</div>
 
     </div>
 
@@ -282,9 +550,12 @@
             <button class="touch-btn touch-right" data-key="ArrowRight" aria-label="Droite">▶</button>
         </div>
         <div id="touch-action-wrap">
+            <button id="touch-hold" class="touch-btn" data-key="c" aria-label="Hold">HOLD</button>
             <button id="touch-action" class="touch-btn" data-key=" " aria-label="Action">FIRE</button>
         </div>
     </div>
+
+    <div id="debug-overlay" aria-hidden="true"></div>
 
     <canvas id="gameCanvas" aria-label="Zone de jeu de la borne arcade">Votre navigateur ne supporte pas canvas.</canvas>
 
@@ -303,7 +574,7 @@ const CONSTANTS = {
     GLITCH_CHANCE: 0.015
 };
 
-const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // --- SYSTÈME AUDIO PROCÉDURAL ---
 class AudioController {
@@ -311,7 +582,12 @@ class AudioController {
         this.ctx = null;
         this.muted = false;
         this.masterGain = null;
+        this.volume = 0.3;
+        this.musicOn = true;
+        this.musicTimer = null;
+        this.musicStep = 0;
         try { this.muted = localStorage.getItem('PLAY_MUTED') === '1'; } catch (e) {}
+        try { this.musicOn = localStorage.getItem('PLAY_MUSIC') !== '0'; } catch (e) {}
         const btn = document.getElementById('mute-btn');
         if (btn) {
             btn.innerText = this.muted ? 'AUDIO: OFF' : 'AUDIO: ON';
@@ -324,20 +600,59 @@ class AudioController {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             this.ctx = new AudioContext();
             this.masterGain = this.ctx.createGain();
-            this.masterGain.gain.value = 0.3; // Volume global
+            this.masterGain.gain.value = this.volume;
             this.masterGain.connect(this.ctx.destination);
         }
         if (this.ctx.state === 'suspended') {
             this.ctx.resume();
         }
+        this.startMusic();
+    }
+
+    setVolume(value) {
+        this.volume = Math.max(0, Math.min(1, Number(value) || 0));
+        if (this.masterGain) this.masterGain.gain.value = this.volume;
+    }
+
+    setMusic(on) {
+        this.musicOn = !!on;
+        try { localStorage.setItem('PLAY_MUSIC', this.musicOn ? '1' : '0'); } catch (e) {}
+        if (this.musicOn) this.startMusic();
+        else this.stopMusic();
+    }
+
+    startMusic() {
+        if (!this.ctx || this.musicTimer || !this.musicOn) return;
+        this.musicTimer = setInterval(() => this.playMusicStep(), 300);
+    }
+
+    stopMusic() {
+        if (this.musicTimer) clearInterval(this.musicTimer);
+        this.musicTimer = null;
+    }
+
+    playMusicStep() {
+        if (!this.ctx || this.muted || !this.musicOn) return;
+        const bass = [110, 0, 130.81, 0, 98, 0, 87.31, 0, 110, 0, 146.83, 0, 130.81, 0, 98, 0];
+        const note = bass[this.musicStep++ % bass.length];
+        if (!note) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(note, t);
+        gain.gain.setValueAtTime(0.03, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.3);
     }
 
     toggleMute() {
         this.muted = !this.muted;
-        const btn = document.getElementById('mute-btn');
-        btn.innerText = this.muted ? "AUDIO: OFF" : "AUDIO: ON";
-        btn.setAttribute('aria-pressed', String(this.muted));
         try { localStorage.setItem('PLAY_MUTED', this.muted ? '1' : '0'); } catch (e) {}
+        if (window.app) window.app.updateMuteLabel();
         if(this.ctx) {
             if(this.muted) this.masterGain.disconnect();
             else this.masterGain.connect(this.ctx.destination);
@@ -508,6 +823,11 @@ class InputSystem {
         }, { passive: false });
 
         document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            if (app.modalOpen) {
+                if (!e.repeat && e.key === 'Escape') { e.preventDefault(); app.closeModal(); }
+                return;
+            }
             if (!e.repeat && (e.key === 'p' || e.key === 'P' || e.key === 'Escape') && app.currentGame) {
                 e.preventDefault();
                 app.togglePause();
@@ -533,7 +853,7 @@ class InputSystem {
             audio.init(); 
             
             if(e.target.closest && e.target.closest('button')) return;
-            if (app.paused) return;
+            if (app.modalOpen || app.paused) return;
             if (app.currentGame && app.currentGame.handleClick) {
                 app.currentGame.handleClick();
             }
@@ -610,14 +930,19 @@ class Particle {
 // ENGINE 1: PONG
 // ==========================================
 class PongEngine {
-    constructor(canvas, ctx) {
+    constructor(canvas, ctx, options = {}) {
         this.canvas = canvas;
         this.ctx = ctx;
         this.active = false;
         this.paddleH = 120;
         this.paddleW = 20;
         this.ballSize = 16;
-        this.aiMaxSpeed = 9;
+        this.twoPlayer = !!options.twoPlayer;
+        this.difficulty = options.difficulty || 'normal';
+        const ai = { easy: { max: 6, blunder: 0.16 }, normal: { max: 9, blunder: 0.08 }, hard: { max: 12, blunder: 0.03 } }[this.difficulty] || { max: 9, blunder: 0.08 };
+        this.aiMaxSpeed = ai.max;
+        this.aiBlunderBase = ai.blunder;
+        this.paddleSpeed = 9;
         this.aiError = 0;
         this.reset();
     }
@@ -631,7 +956,7 @@ class PongEngine {
         this.shake = 0;
         this.state = 'WAITING';
         this.winner = null;
-        app.showGameMessage("PONG", "CLICK TO START");
+        app.showGameMessage(this.twoPlayer ? "PONG // 2P" : "PONG", this.twoPlayer ? "P1: W/S // P2: ARROWS" : "CLICK TO START");
     }
 
     resetBall() {
@@ -673,16 +998,23 @@ class PongEngine {
         this.particles = this.particles.filter(p => p.life > 0);
         if(this.shake > 0) this.shake *= 0.9;
         if (this.state !== 'PLAYING') return;
-        this.p1.y = app.input.y - this.paddleH/2;
-        let target = this.ball.y - this.paddleH/2;
-        if (Math.abs(this.ball.x - (this.canvas.width - 50)) > this.canvas.width * 0.6) {
-            target = this.canvas.height / 2;
+        const keys = app.input.keys;
+        if (this.twoPlayer) {
+            const s = this.paddleSpeed;
+            this.p1.y += ((keys['w'] || keys['W']) ? -s : 0) + ((keys['s'] || keys['S']) ? s : 0);
+            this.ai.y += (keys['ArrowUp'] ? -s : 0) + (keys['ArrowDown'] ? s : 0);
         } else {
-            target += this.aiError;
+            this.p1.y = app.input.y - this.paddleH/2;
+            let target = this.ball.y - this.paddleH/2;
+            if (Math.abs(this.ball.x - (this.canvas.width - 50)) > this.canvas.width * 0.6) {
+                target = this.canvas.height / 2;
+            } else {
+                target += this.aiError;
+            }
+            let aiDelta = (target - this.ai.y) * 0.08;
+            aiDelta = Math.max(-this.aiMaxSpeed, Math.min(this.aiMaxSpeed, aiDelta));
+            this.ai.y += aiDelta;
         }
-        let aiDelta = (target - this.ai.y) * 0.08;
-        aiDelta = Math.max(-this.aiMaxSpeed, Math.min(this.aiMaxSpeed, aiDelta));
-        this.ai.y += aiDelta;
         [this.p1, this.ai].forEach(p => {
             if(p.y < 0) p.y = 0;
             if(p.y + this.paddleH > this.canvas.height) p.y = this.canvas.height - this.paddleH;
@@ -718,13 +1050,16 @@ class PongEngine {
             return (this.ball.y + this.ballSize > p.y && this.ball.y < p.y + this.paddleH && Math.abs(this.ball.x - x) < this.paddleW + 10);
         };
         if (this.ball.vx < 0 && this.ball.x < 50 + this.paddleW && checkPaddle(this.p1, 50)) {
-            this.aiError = (Math.random() - 0.5) * (16 + this.ball.speed * 2.5);
-            const blunderChance = 0.08 + Math.max(0, this.ball.speed - 8) * 0.006;
-            if (Math.random() < blunderChance) {
-                this.aiError += (Math.random() < 0.5 ? -1 : 1) * (this.paddleH * 0.9 + Math.random() * this.paddleH * 0.8);
+            if (!this.twoPlayer) {
+                this.aiError = (Math.random() - 0.5) * (16 + this.ball.speed * 2.5);
+                const blunderChance = this.aiBlunderBase + Math.max(0, this.ball.speed - 8) * 0.006;
+                if (Math.random() < blunderChance) {
+                    this.aiError += (Math.random() < 0.5 ? -1 : 1) * (this.paddleH * 0.9 + Math.random() * this.paddleH * 0.8);
+                }
             }
             this.bounceBall(this.p1, 1);
             this.shake = 15; this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_FG);
+            app.vibrate(6);
             audio.play('HIT');
         }
         if (this.ball.vx > 0 && this.ball.x > this.canvas.width - 50 - this.paddleW && checkPaddle(this.ai, this.canvas.width - 50 - this.paddleW)) {
@@ -732,8 +1067,8 @@ class PongEngine {
             this.shake = 15; this.spawnParticles(this.ball.x, this.ball.y, CONSTANTS.COLOR_HARD);
             audio.play('HIT');
         }
-        if (this.ball.x < 0) { this.ai.score++; this.checkWin(); this.resetBall(); this.shake = 30; audio.playNoise(0.4, 0.25); } 
-        else if (this.ball.x > this.canvas.width) { this.p1.score++; this.checkWin(); this.resetBall(); this.shake = 30; audio.play('SCORE'); }
+        if (this.ball.x < 0) { this.ai.score++; this.checkWin(); this.resetBall(); this.shake = 30; app.vibrate(25); audio.playNoise(0.4, 0.25); }
+        else if (this.ball.x > this.canvas.width) { this.p1.score++; this.checkWin(); this.resetBall(); this.shake = 30; app.vibrate(25); audio.play('SCORE'); }
     }
 
     bounceBall(paddle, dirX) {
@@ -749,7 +1084,8 @@ class PongEngine {
     checkWin() {
         if (this.p1.score >= 5 || this.ai.score >= 5) {
             this.state = 'END';
-            this.winner = this.p1.score >= 5 ? "PLAYER" : "CPU";
+            this.winner = this.p1.score >= 5 ? (this.twoPlayer ? 'P1' : 'PLAYER') : (this.twoPlayer ? 'P2' : 'CPU');
+            if (this.p1.score >= 5) app.recordPongWin();
             app.showGameMessage(this.winner + " WINS", "CLICK TO RESET");
             audio.play('GAMEOVER');
         }
@@ -786,11 +1122,11 @@ class PongEngine {
 // ENGINE 2: BREAKOUT
 // ==========================================
 const BREAKOUT_LEVELS = [
-    { rows: 3, cols: 8,  hard: 0.00, ball: 9.0,  maxBall: 14.0, paddle: 170, power: 0.22 },
-    { rows: 3, cols: 10, hard: 0.15, ball: 9.2,  maxBall: 14.5, paddle: 160, power: 0.20 },
-    { rows: 4, cols: 10, hard: 0.25, ball: 9.6,  maxBall: 15.0, paddle: 150, power: 0.18 },
-    { rows: 4, cols: 11, hard: 0.35, ball: 10.0, maxBall: 15.5, paddle: 140, power: 0.16 },
-    { rows: 4, cols: 12, hard: 0.45, ball: 10.4, maxBall: 16.0, paddle: 130, power: 0.14 }
+    { rows: 3, cols: 8,  hard: 0.00, ball: 9.0,  maxBall: 14.0, paddle: 170, power: 0.22, pattern: 'full' },
+    { rows: 3, cols: 12, hard: 0.15, ball: 9.2,  maxBall: 14.5, paddle: 160, power: 0.20, pattern: 'checker' },
+    { rows: 4, cols: 12, hard: 0.25, ball: 9.6,  maxBall: 15.0, paddle: 150, power: 0.18, pattern: 'pyramid' },
+    { rows: 4, cols: 14, hard: 0.35, ball: 10.0, maxBall: 15.5, paddle: 140, power: 0.16, pattern: 'columns' },
+    { rows: 4, cols: 14, hard: 0.45, ball: 10.4, maxBall: 16.0, paddle: 130, power: 0.14, pattern: 'diamond' }
 ];
 
 const BREAKOUT_POWERUPS = {
@@ -808,6 +1144,61 @@ const BREAKOUT_DROPS = [
     ['MULTI', 20], ['LIFE', 10], ['GROW', 12], ['SLOW', 12], ['ROCKET', 14], ['FIRE', 8]
 ];
 const BREAKOUT_MALUSES = [['FAST', 12], ['SHRINK', 12]];
+
+const ACHIEVEMENTS = [
+    { id: 'FIRST_RUN',       en: 'FIRST COIN',    fr: 'PREMIÈRE PIÈCE', enDesc: 'Play your first game',              frDesc: 'Lancer une première partie' },
+    { id: 'PONG_WIN',        en: 'PONG MASTER',   fr: 'MAÎTRE DU PONG', enDesc: 'Win a Pong match',                  frDesc: 'Gagner un match de Pong' },
+    { id: 'BREAKOUT_CLEAR',  en: 'WALL BREAKER',  fr: 'MUR BRISÉ',      enDesc: 'Clear all 5 Breakout levels',      frDesc: 'Terminer les 5 niveaux de Breakout' },
+    { id: 'SNAKE_100',       en: 'LONG SNAKE',    fr: 'SERPENT LONG',   enDesc: 'Reach 100 points in Snake',        frDesc: 'Atteindre 100 points à Snake' },
+    { id: 'TETRIS_LVL2',     en: 'FAST FALL',     fr: 'CHUTE RAPIDE',   enDesc: 'Reach level 2 in Tetris',          frDesc: 'Atteindre le niveau 2 à Tetris' },
+    { id: 'INVADERS_CLEAR',  en: 'EARTH SAVED',   fr: 'TERRE SAUVÉE',   enDesc: 'Clear the 3 Invaders waves',       frDesc: 'Terminer les 3 vagues d’Invaders' },
+    { id: 'ASTEROIDS_WAVE5', en: 'DEEP SPACE',    fr: 'ESPACE PROFOND', enDesc: 'Reach wave 5 in Asteroids',        frDesc: 'Atteindre la vague 5 à Asteroids' },
+    { id: 'DAILY',           en: 'DAILY PLAYER',  fr: 'JOUEUR DU JOUR', enDesc: 'Play a daily challenge',           frDesc: 'Jouer un défi du jour' }
+];
+
+const UI_TEXT = {
+    en: {
+        hi: 'HI', firstTo5: 'FIRST TO 5', daily: 'DAILY', records: 'RECORDS', settings: 'SETTINGS',
+        close: 'CLOSE', save: 'SAVE', volume: 'VOLUME', scanlines: 'SCANLINES', reduced: 'REDUCED MOTION',
+        touchSize: 'TOUCH SIZE', language: 'LANGUAGE', small: 'SMALL', medium: 'MEDIUM', large: 'LARGE',
+        english: 'ENGLISH', french: 'FRENCH', paused: 'PAUSED', pressResume: 'PRESS P OR CLICK RESUME',
+        resume: 'RESUME', pause: 'PAUSE', audioOn: 'AUDIO: ON', audioOff: 'AUDIO: OFF', terminal: '← TERMINAL',
+        plays: 'PLAYS', pongWins: 'PONG WINS', achievements: 'ACHIEVEMENTS', noScores: 'NO SCORE YET',
+        dailyChallenge: 'DAILY CHALLENGE', top5: 'TOP 5', enterInitials: 'ENTER INITIALS', newRecord: 'NEW RECORD',
+        achievementUnlocked: 'ACHIEVEMENT UNLOCKED', stats: 'STATS', lives: 'LIVES', lvl: 'LVL', wave: 'WAVE',
+        score: 'SCORE', level: 'LEVEL', rockets: 'ROCKETS', click: 'CLICK', fast: 'FAST', slow: 'SLOW',
+        grow: 'GROW', shrink: 'SHRINK', fire: 'FIRE', drop: 'DROP', today: 'TODAY', none: '—', next: 'NEXT', hold: 'HOLD',
+        p_life: 'LIFE', p_multi: 'MULTI', p_grow: 'GROW', p_shrink: 'SHRINK', p_fast: 'FAST', p_slow: 'SLOW', p_rocket: 'ROCKET', p_fire: 'FIRE',
+        onePlayer: '1 PLAYER', twoPlayers: '2 PLAYERS', easy: 'EASY', normal: 'NORMAL', hard: 'HARD', start: 'START', shield: 'SHIELD',
+        ctrl_pong: 'MOUSE / 2P KEYS', ctrl_breakout: 'MOUSE + CLICK', ctrl_snake: 'ARROWS / D-PAD', ctrl_invaders: 'ARROWS + SPACE', ctrl_tetris: 'ARROWS + SPACE + C', ctrl_asteroids: 'ARROWS + SPACE'
+    },
+    fr: {
+        hi: 'REC', firstTo5: 'PREMIER À 5', daily: 'DÉFI', records: 'RECORDS', settings: 'RÉGLAGES',
+        close: 'FERMER', save: 'ENREGISTRER', volume: 'VOLUME', scanlines: 'SCANLINES', reduced: 'MOUVEMENT RÉDUIT', music: 'MUSIQUE', haptics: 'VIBRATIONS',
+        touchSize: 'TAILLE TACTILE', language: 'LANGUE', small: 'PETIT', medium: 'MOYEN', large: 'GRAND',
+        english: 'ANGLAIS', french: 'FRANÇAIS', paused: 'EN PAUSE', pressResume: 'P OU CLIQUE REPRENDRE',
+        resume: 'REPRENDRE', pause: 'PAUSE', audioOn: 'SON: OUI', audioOff: 'SON: NON', terminal: '← TERMINAL',
+        plays: 'PARTIES', pongWins: 'VICTOIRES PONG', achievements: 'SUCCÈS', noScores: 'AUCUN SCORE',
+        dailyChallenge: 'DÉFI DU JOUR', top5: 'TOP 5', enterInitials: 'INITIALES', newRecord: 'NOUVEAU RECORD',
+        achievementUnlocked: 'SUCCÈS DÉBLOQUÉ', stats: 'STATS', lives: 'VIES', lvl: 'NIV', wave: 'VAGUE',
+        score: 'SCORE', level: 'NIVEAU', rockets: 'FUSÉES', click: 'CLIC', fast: 'RAPIDE', slow: 'LENT',
+        grow: 'GRAND', shrink: 'RÉDUIT', fire: 'TIR', drop: 'POSER', today: "AUJOURD'HUI", none: '—', next: 'SUIVANT', hold: 'RÉSERVE',
+        p_life: 'VIE', p_multi: 'MULTI', p_grow: 'GRAND', p_shrink: 'RÉDUIT', p_fast: 'RAPIDE', p_slow: 'LENT', p_rocket: 'FUSÉE', p_fire: 'FEU',
+        onePlayer: '1 JOUEUR', twoPlayers: '2 JOUEURS', easy: 'FACILE', normal: 'NORMAL', hard: 'DIFFICILE', start: 'JOUER', shield: 'BOUCLIER',
+        ctrl_pong: 'SOURIS / 2J CLAVIER', ctrl_breakout: 'SOURIS + CLIC', ctrl_snake: 'FLÈCHES / D-PAD', ctrl_invaders: 'FLÈCHES + ESPACE', ctrl_tetris: 'FLÈCHES + ESPACE + C', ctrl_asteroids: 'FLÈCHES + ESPACE'
+    }
+};
+
+function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
 
 class BreakoutEngine {
     constructor(canvas, ctx) {
@@ -830,9 +1221,37 @@ class BreakoutEngine {
         this.startLevel(1);
     }
 
+    levelConfig(level) {
+        if (level <= BREAKOUT_LEVELS.length) return BREAKOUT_LEVELS[level - 1];
+        const extra = level - BREAKOUT_LEVELS.length;
+        const patterns = ['checker', 'pyramid', 'columns', 'diamond', 'full'];
+        return {
+            rows: 4,
+            cols: Math.min(16, 12 + (extra % 3)),
+            hard: Math.min(0.72, 0.48 + extra * 0.03),
+            ball: Math.min(13, 10.6 + extra * 0.15),
+            maxBall: Math.min(18, 16.2 + extra * 0.2),
+            paddle: Math.max(90, 128 - extra * 3),
+            power: 0.14,
+            pattern: patterns[extra % patterns.length]
+        };
+    }
+
+    isPatternGap(pattern, r, c) {
+        const mid = (this.cols - 1) / 2;
+        if (pattern === 'checker') return (r + c) % 2 === 1;
+        if (pattern === 'pyramid') return Math.abs(c - mid) > (r + 1) * this.cols / (this.rows * 2);
+        if (pattern === 'columns') return c % 4 === 1;
+        if (pattern === 'diamond') {
+            const midRow = (this.rows - 1) / 2;
+            return Math.abs(c - mid) / (this.cols * 0.55) + Math.abs(r - midRow) / (this.rows * 0.75) > 1;
+        }
+        return false;
+    }
+
     startLevel(level) {
         this.level = level;
-        const cfg = BREAKOUT_LEVELS[Math.min(level, BREAKOUT_LEVELS.length) - 1];
+        const cfg = this.levelConfig(level);
         this.rows = cfg.rows;
         this.cols = Math.max(8, Math.min(cfg.cols, Math.floor(this.canvas.width / 64)));
         this.hardChance = cfg.hard;
@@ -864,11 +1283,13 @@ class BreakoutEngine {
         const w = (this.canvas.width - (this.cols + 1) * gap) / this.cols;
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
+                if (this.isPatternGap(cfg.pattern, r, c)) continue;
                 const isHard = Math.random() < this.hardChance;
                 this.bricks.push({ x: gap + c * (w + gap), y: 108 + r * 34, w: w, h: 30, hp: isHard ? 2 : 1, maxHp: isHard ? 2 : 1, active: true });
             }
         }
-        app.showGameMessage("LEVEL " + level, level === 2 ? "CLICK TO LAUNCH // WHITE = 2 HITS" : "CLICK TO LAUNCH");
+        const bonusLabel = level > BREAKOUT_LEVELS.length ? "ENDLESS " + (level - BREAKOUT_LEVELS.length) : "LEVEL " + level;
+        app.showGameMessage(bonusLabel, level === 2 ? "CLICK TO LAUNCH // WHITE = 2 HITS" : "CLICK TO LAUNCH");
     }
 
     onResize(oldW, oldH, newW, newH) {
@@ -922,17 +1343,12 @@ class BreakoutEngine {
         this.score += bonus;
         this.clearTimer = 90;
         app.showGameMessage("LEVEL " + this.level + " CLEAR", "BONUS +" + bonus);
+        app.vibrate(30);
         audio.play('POWERUP');
     }
 
     advanceLevel() {
-        if (this.level >= BREAKOUT_LEVELS.length) {
-            this.state = 'VICTORY';
-            const isRecord = app.saveHighScore('BREAKOUT', this.score);
-            app.showGameMessage(isRecord ? "NEW RECORD" : "ALL LEVELS CLEAR", "SCORE: " + this.score);
-            audio.play('POWERUP');
-            return;
-        }
+        if (this.level === BREAKOUT_LEVELS.length) app.unlock('BREAKOUT_CLEAR');
         this.startLevel(this.level + 1);
     }
 
@@ -1208,10 +1624,10 @@ class BreakoutEngine {
         // UI
         this.ctx.font = "bold 24px 'Courier New'"; 
         this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        let livesStr = "LIVES: "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr + " LVL: " + this.level + "/" + BREAKOUT_LEVELS.length, 20, 84);
+        let livesStr = app.t('lives') + ": "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr + " " + app.t('lvl') + ": " + (this.level > BREAKOUT_LEVELS.length ? this.level + "+" : this.level + "/" + BREAKOUT_LEVELS.length), 20, 84);
         // HI SCORE
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('BREAKOUT'), this.canvas.width - 20, 84);
+        this.ctx.fillText(app.t('hi') + ": " + app.getHighScore('BREAKOUT'), this.canvas.width - 20, 84);
 
         this.ctx.fillStyle = CONSTANTS.COLOR_FG; this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddleW, this.paddleH);
         this.bricks.forEach(b => {
@@ -1242,7 +1658,7 @@ class BreakoutEngine {
             this.ctx.font = "bold 13px 'Courier New'";
             this.ctx.fillText(style.icon, p.x + 6, p.y + H/2 + 1);
             this.ctx.font = "bold 11px 'Courier New'";
-            this.ctx.fillText(style.label, p.x + 22, p.y + H/2 + 1);
+            this.ctx.fillText(app.t('p_' + p.type.toLowerCase()), p.x + 22, p.y + H/2 + 1);
         });
         this.projectiles.forEach(p => {
             this.ctx.fillStyle = '#FFD400';
@@ -1267,11 +1683,11 @@ class BreakoutEngine {
         this.ctx.font = "bold 13px 'Courier New'";
         this.ctx.textAlign = 'left'; this.ctx.textBaseline = 'middle';
         const items = [];
-        if(this.rockets > 0) items.push(['ROCKETS ' + this.rockets + ' — CLICK', '#FFD400']);
-        if(this.fastTimer > 0) items.push(['FAST ' + Math.ceil(this.fastTimer/60) + 's', '#FF8C00']);
-        if(this.slowTimer > 0) items.push(['SLOW ' + Math.ceil(this.slowTimer/60) + 's', '#4D7CFF']);
-        if(this.growTimer > 0) items.push(['GROW ' + Math.ceil(this.growTimer/60) + 's', '#00FF88']);
-        if(this.shrinkTimer > 0) items.push(['SHRINK ' + Math.ceil(this.shrinkTimer/60) + 's', '#FF2D2D']);
+        if(this.rockets > 0) items.push([app.t('rockets') + ' ' + this.rockets + ' — ' + app.t('click'), '#FFD400']);
+        if(this.fastTimer > 0) items.push([app.t('fast') + ' ' + Math.ceil(this.fastTimer/60) + 's', '#FF8C00']);
+        if(this.slowTimer > 0) items.push([app.t('slow') + ' ' + Math.ceil(this.slowTimer/60) + 's', '#4D7CFF']);
+        if(this.growTimer > 0) items.push([app.t('grow') + ' ' + Math.ceil(this.growTimer/60) + 's', '#00FF88']);
+        if(this.shrinkTimer > 0) items.push([app.t('shrink') + ' ' + Math.ceil(this.shrinkTimer/60) + 's', '#FF2D2D']);
         let sx = 20;
         items.forEach(([text, color]) => {
             this.ctx.fillStyle = color;
@@ -1298,13 +1714,30 @@ class SnakeEngine {
     gridCols() { return Math.floor(this.canvas.width / this.grid); }
     gridRows() { return Math.floor((this.canvas.height - this.playTop - (app.touchVisible ? 170 : 0)) / this.grid); }
 
+    makeObstacles() {
+        this.obstacles = [];
+        if (this.level < 2) return;
+        const cols = this.gridCols();
+        const rows = this.gridRows();
+        const count = Math.min(12, (this.level - 1) * 3);
+        let guard = 0;
+        while (this.obstacles.length < count && guard++ < 200) {
+            const cell = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
+            if (this.snake.some(s => s.x === cell.x && s.y === cell.y)) continue;
+            if (this.food && this.food.x === cell.x && this.food.y === cell.y) continue;
+            if (this.obstacles.some(o => o.x === cell.x && o.y === cell.y)) continue;
+            this.obstacles.push(cell);
+        }
+    }
+
     reset() {
         const cx = Math.floor(this.gridCols() / 2);
         const cy = Math.floor(this.gridRows() / 2);
         this.snake = [{x: cx, y: cy}, {x: cx-1, y: cy}, {x: cx-2, y: cy}];
         this.dir = {x: 1, y: 0}; this.nextDir = {x: 1, y: 0};
-        this.spawnFood();
         this.score = 0; this.level = 1; this.speed = 8; this.frameCount = 0; this.shake = 0; this.particles = []; this.state = 'WAITING';
+        this.obstacles = [];
+        this.spawnFood();
         app.showGameMessage("SNAKE", "PRESS ARROWS TO START");
     }
 
@@ -1315,7 +1748,8 @@ class SnakeEngine {
         while(!valid) {
             this.food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
             const onSnake = this.snake.some(s => s.x === this.food.x && s.y === this.food.y);
-            valid = !onSnake;
+            const onObstacle = this.obstacles.some(o => o.x === this.food.x && o.y === this.food.y);
+            valid = !onSnake && !onObstacle;
         }
     }
 
@@ -1336,6 +1770,10 @@ class SnakeEngine {
             this.food.x = Math.max(0, Math.min(cols - 1, Math.round(this.food.x * sx)));
             this.food.y = Math.max(0, Math.min(rows - 1, Math.round(this.food.y * sy)));
         }
+        this.obstacles.forEach(cell => {
+            cell.x = Math.max(0, Math.min(cols - 1, Math.round(cell.x * sx)));
+            cell.y = Math.max(0, Math.min(rows - 1, Math.round(cell.y * sy)));
+        });
     }
 
     update() {
@@ -1356,8 +1794,10 @@ class SnakeEngine {
         const cols = this.gridCols();
         const rows = this.gridRows();
         const eats = head.x === this.food.x && head.y === this.food.y;
-        if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || this.checkSelfCollision(head, !eats)) {
-            this.state = 'GAMEOVER'; this.shake = 30; this.spawnParticles(this.snake[0].x * this.grid, this.snake[0].y * this.grid, CONSTANTS.COLOR_FG);
+        const hitObstacle = this.obstacles.some(o => o.x === head.x && o.y === head.y);
+        if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || hitObstacle || this.checkSelfCollision(head, !eats)) {
+            this.state = 'GAMEOVER'; this.shake = 30; app.vibrate(40); this.spawnParticles(this.snake[0].x * this.grid, this.snake[0].y * this.grid, CONSTANTS.COLOR_FG);
+            if (this.score >= 100) app.unlock('SNAKE_100');
             const isRecord = app.saveHighScore('SNAKE', this.score);
             app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM FAILURE", "SCORE: " + this.score); 
             audio.playNoise(0.5);
@@ -1365,7 +1805,11 @@ class SnakeEngine {
         }
         this.snake.unshift(head);
         if (eats) {
-            this.score += 10; this.level = 1 + Math.floor(this.score / 100); this.spawnFood(); this.shake = 5; this.spawnParticles(head.x * this.grid, head.y * this.grid, CONSTANTS.COLOR_HARD);
+            const previousLevel = this.level;
+            this.score += 10; this.level = 1 + Math.floor(this.score / 100);
+            if (this.level !== previousLevel) { this.makeObstacles(); app.toast(app.t('level') + ' ' + this.level); }
+            app.vibrate(5);
+            this.spawnFood(); this.shake = 5; this.spawnParticles(head.x * this.grid, head.y * this.grid, CONSTANTS.COLOR_HARD);
             audio.play('SCORE');
             if (this.speed > 3 && this.score % 50 === 0) this.speed--;
         } else { this.snake.pop(); }
@@ -1389,14 +1833,18 @@ class SnakeEngine {
         // HUD
         this.ctx.font = "bold 24px 'Courier New'";
         this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        this.ctx.fillText("LVL: " + this.level, 20, 84);
+        this.ctx.fillText(app.t('lvl') + ': ' + this.level, 20, 84);
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('SNAKE'), this.canvas.width - 20, 84);
+        this.ctx.fillText(app.t('hi') + ': ' + app.getHighScore('SNAKE'), this.canvas.width - 20, 84);
 
         const playHeight = this.canvas.height - (app.touchVisible ? 170 : 0);
         this.ctx.strokeStyle = '#0a0a0a'; this.ctx.lineWidth = 1;
         for (let x = 0; x < this.canvas.width; x += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(x, this.playTop); this.ctx.lineTo(x, playHeight); this.ctx.stroke(); }
         for (let y = this.playTop; y < playHeight; y += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(0, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke(); }
+        this.ctx.fillStyle = '#2a2a2a';
+        this.obstacles.forEach(o => { this.ctx.fillRect(o.x * this.grid + 1, this.playTop + o.y * this.grid + 1, this.grid - 2, this.grid - 2); });
+        this.ctx.strokeStyle = '#777';
+        this.obstacles.forEach(o => { this.ctx.strokeRect(o.x * this.grid + 1, this.playTop + o.y * this.grid + 1, this.grid - 2, this.grid - 2); });
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
         this.snake.forEach((s) => { this.ctx.fillRect(s.x * this.grid + 1, this.playTop + s.y * this.grid + 1, this.grid - 2, this.grid - 2); });
         this.ctx.fillStyle = CONSTANTS.COLOR_HARD; this.ctx.fillRect(this.food.x * this.grid, this.playTop + this.food.y * this.grid, this.grid, this.grid);
@@ -1436,10 +1884,16 @@ class SpaceInvadersEngine {
         const rows = this.wave === 1 ? 4 : (this.wave === 2 ? 4 : 5);
         const cols = this.wave === 1 ? 8 : 10;
         const alienW = 30; const alienH = 20; const gap = 15;
+        const startY = this.wave === this.maxWaves ? 170 : 130;
         const startX = (this.canvas.width - (cols * (alienW + gap))) / 2;
-        for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { this.aliens.push({ x: startX + c * (alienW + gap), y: 130 + r * (alienH + gap), w: alienW, h: alienH, active: true }); } }
+        for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { this.aliens.push({ x: startX + c * (alienW + gap), y: startY + r * (alienH + gap), w: alienW, h: alienH, active: true }); } }
+        if (this.wave === this.maxWaves) {
+            this.aliens.push({ x: this.canvas.width/2 - 45, y: 110, w: 90, h: 45, active: true, hp: 12, maxHp: 12, boss: true });
+        }
         this.alienDir = 1;
         this.alienSpeed = 1 + (this.wave - 1) * 0.25;
+        this.ufo = null;
+        this.ufoTimer = 900 + Math.random() * 600;
 
         const bunkerCount = 3; const bunkerW = 80; const bunkerGap = (this.canvas.width - (bunkerCount * bunkerW)) / (bunkerCount + 1);
         for(let i=0; i<bunkerCount; i++) { this.bunkers.push({ x: bunkerGap + i * (bunkerW + bunkerGap), y: this.canvas.height - 120 - bottomLift, w: bunkerW, h: 40, hp: 10 }); }
@@ -1452,6 +1906,7 @@ class SpaceInvadersEngine {
         if (this.wave >= this.maxWaves) {
             this.state = 'VICTORY';
             const isRecord = app.saveHighScore('INVADERS', this.score);
+            app.unlock('INVADERS_CLEAR');
             app.showGameMessage(isRecord ? "NEW RECORD" : "ALL WAVES CLEAR", "SCORE: " + this.score);
             audio.play('POWERUP');
             return;
@@ -1464,6 +1919,7 @@ class SpaceInvadersEngine {
     onResize(oldW, oldH, newW, newH) {
         const sx = newW / oldW;
         this.aliens.forEach(a => a.x *= sx);
+        if (this.ufo) this.ufo.x *= sx;
         this.bullets.forEach(b => b.x *= sx);
         this.enemyBullets.forEach(b => b.x *= sx);
         this.bunkers.forEach(b => b.x *= sx);
@@ -1485,6 +1941,16 @@ class SpaceInvadersEngine {
         const keys = app.input.keys;
         if (this.state === 'WAITING' && (keys['ArrowLeft'] || keys['ArrowRight'] || keys[' '] || app.input.consumeAny(['ArrowLeft','ArrowRight',' ']))) { this.state = 'PLAYING'; app.hideGameMessage(); }
         if(this.state !== 'PLAYING') return;
+
+        this.ufoTimer--;
+        if (!this.ufo && this.ufoTimer <= 0) {
+            this.ufo = { x: -60, y: 96, w: 50, h: 20, vx: 2 + this.wave * 0.2 };
+            this.ufoTimer = 900 + Math.random() * 900;
+        }
+        if (this.ufo) {
+            this.ufo.x += this.ufo.vx;
+            if (this.ufo.x > this.canvas.width + 60) this.ufo = null;
+        }
 
         if(keys['ArrowLeft']) this.player.x -= this.player.speed;
         if(keys['ArrowRight']) this.player.x += this.player.speed;
@@ -1521,13 +1987,47 @@ class SpaceInvadersEngine {
             audio.play('GAMEOVER');
         }
 
-        for(let b of this.bullets) { for(let a of this.aliens) { if(!a.active) continue; if(b.x < a.x + a.w && b.x + b.w > a.x && b.y < a.y + a.h && b.y + b.h > a.y) { a.active = false; b.active = false; this.score += 20; this.shake = 5; this.spawnParticles(a.x + a.w/2, a.y + a.h/2, CONSTANTS.COLOR_HARD); audio.playNoise(0.1); break; } } }
+        for(const b of this.bullets) {
+            if(!b.active) continue;
+            if (this.ufo && b.x < this.ufo.x + this.ufo.w && b.x + b.w > this.ufo.x && b.y < this.ufo.y + this.ufo.h && b.y + b.h > this.ufo.y) {
+                b.active = false;
+                this.score += 150;
+                this.shake = 10;
+                this.spawnParticles(this.ufo.x + this.ufo.w/2, this.ufo.y + this.ufo.h/2, CONSTANTS.COLOR_FG);
+                this.ufo = null;
+                audio.play('POWERUP');
+                continue;
+            }
+            for(const a of this.aliens) {
+                if(!a.active) continue;
+                if(b.x < a.x + a.w && b.x + b.w > a.x && b.y < a.y + a.h && b.y + b.h > a.y) {
+                    b.active = false;
+                    this.score += 20;
+                    this.shake = 5;
+                    this.spawnParticles(a.x + a.w/2, a.y + a.h/2, CONSTANTS.COLOR_HARD);
+                    if (a.boss) {
+                        a.hp--;
+                        audio.play('HIT');
+                        if (a.hp <= 0) {
+                            a.active = false;
+                            this.score += 200;
+                            this.shake = 20;
+                            audio.playNoise(0.4, 0.25);
+                        }
+                    } else {
+                        a.active = false;
+                        audio.playNoise(0.1);
+                    }
+                    break;
+                }
+            }
+        }
         
         const damageBunker = (bullet, bunker) => { if(!bullet.active) return false; if(bullet.x < bunker.x + bunker.w && bullet.x + bullet.w > bunker.x && bullet.y < bunker.y + bunker.h && bullet.y + bullet.h > bunker.y) { bullet.active = false; bunker.hp--; this.spawnParticles(bullet.x, bullet.y, CONSTANTS.COLOR_FG); audio.play('HIT'); return true; } return false; };
         this.bunkers = this.bunkers.filter(bnk => bnk.hp > 0);
         for(let bnk of this.bunkers) { for(let b of this.bullets) if(damageBunker(b, bnk)) break; for(let eb of this.enemyBullets) if(damageBunker(eb, bnk)) break; }
 
-        for(let eb of this.enemyBullets) { if(eb.x < this.player.x + this.player.w && eb.x + eb.w > this.player.x && eb.y < this.player.y + this.player.h && eb.y + eb.h > this.player.y) { eb.active = false; this.lives--; this.shake = 20; this.spawnParticles(this.player.x + this.player.w/2, this.player.y, CONSTANTS.COLOR_FG); audio.playNoise(0.3); if(this.lives <= 0) { 
+        for(let eb of this.enemyBullets) { if(eb.x < this.player.x + this.player.w && eb.x + eb.w > this.player.x && eb.y < this.player.y + this.player.h && eb.y + eb.h > this.player.y) { eb.active = false; this.lives--; this.shake = 20; app.vibrate(30); this.spawnParticles(this.player.x + this.player.w/2, this.player.y, CONSTANTS.COLOR_FG); audio.playNoise(0.3); if(this.lives <= 0) {
             this.state = 'GAMEOVER'; 
             const isRecord = app.saveHighScore('INVADERS', this.score);
             app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM FAILURE", "SCORE: " + this.score); 
@@ -1548,10 +2048,10 @@ class SpaceInvadersEngine {
 
         // HUD
         this.ctx.font = "bold 24px 'Courier New'"; this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        let livesStr = "LIVES: "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr + " WAVE: " + this.wave + "/" + this.maxWaves, 20, 84);
+        let livesStr = app.t('lives') + ": "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr + " " + app.t('wave') + ": " + this.wave + "/" + this.maxWaves, 20, 84);
         // HI SCORE
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('INVADERS'), this.canvas.width - 20, 84);
+        this.ctx.fillText(app.t('hi') + ": " + app.getHighScore('INVADERS'), this.canvas.width - 20, 84);
 
         // Player
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
@@ -1559,10 +2059,32 @@ class SpaceInvadersEngine {
         // Little cannon on top
         this.ctx.fillRect(this.player.x + this.player.w/2 - 4, this.player.y - 6, 8, 6);
 
+        if (this.ufo) {
+            this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+            this.ctx.fillRect(this.ufo.x, this.ufo.y + 6, this.ufo.w, 8);
+            this.ctx.fillRect(this.ufo.x + 8, this.ufo.y, this.ufo.w - 16, 6);
+            this.ctx.fillStyle = CONSTANTS.COLOR_HARD;
+            this.ctx.fillRect(this.ufo.x + 14, this.ufo.y + 8, 6, 4);
+            this.ctx.fillRect(this.ufo.x + 30, this.ufo.y + 8, 6, 4);
+        }
+
         // Aliens
-        this.ctx.fillStyle = CONSTANTS.COLOR_HARD; // White aliens
         for(let a of this.aliens) {
-            if(a.active) this.ctx.fillRect(a.x, a.y, a.w, a.h);
+            if(!a.active) continue;
+            if (a.boss) {
+                this.ctx.fillStyle = CONSTANTS.COLOR_HARD;
+                this.ctx.fillRect(a.x, a.y, a.w, a.h);
+                this.ctx.fillStyle = '#111';
+                this.ctx.fillRect(a.x + 10, a.y + 10, a.w - 20, 8);
+                this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+                this.ctx.fillRect(a.x + 10, a.y + 10, (a.w - 20) * (a.hp / a.maxHp), 8);
+                this.ctx.fillStyle = '#111';
+                this.ctx.fillRect(a.x + 20, a.y + 28, 10, 8);
+                this.ctx.fillRect(a.x + a.w - 30, a.y + 28, 10, 8);
+            } else {
+                this.ctx.fillStyle = CONSTANTS.COLOR_HARD;
+                this.ctx.fillRect(a.x, a.y, a.w, a.h);
+            }
         }
 
         // Bunkers
@@ -1615,11 +2137,15 @@ class TetrisEngine {
         this.pieces = 'ILJOTSZ';
         this.colors = [null, CONSTANTS.COLOR_FG, CONSTANTS.COLOR_HARD, CONSTANTS.COLOR_FG, CONSTANTS.COLOR_HARD, CONSTANTS.COLOR_FG, CONSTANTS.COLOR_HARD, CONSTANTS.COLOR_FG];
         
+        this.bag = [];
+        this.nextType = null;
+        this.heldType = null;
+        this.canHold = true;
         this.player = { pos: {x: 0, y: 0}, matrix: null, score: 0 };
         this.resetPiece();
         this.calculateScale(); // Ajuster à l'écran
         
-        app.showGameMessage("TETRIS", "ARROWS: MOVE // SPACE: DROP");
+        app.showGameMessage("TETRIS", "ARROWS: MOVE // SPACE: DROP // C: HOLD");
     }
 
     calculateScale() {
@@ -1640,18 +2166,51 @@ class TetrisEngine {
         if (type === 'T') return [[0, 7, 0],[7, 7, 7],[0, 0, 0]];
     }
 
+    nextFromBag() {
+        if (!this.bag.length) {
+            this.bag = this.pieces.split('');
+            for (let i = this.bag.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+            }
+        }
+        return this.bag.pop();
+    }
+
     resetPiece() {
-        const type = this.pieces[this.pieces.length * Math.random() | 0];
+        const type = this.nextType || this.nextFromBag();
+        this.nextType = this.nextFromBag();
+        this.currentType = type;
         this.player.matrix = this.createPiece(type);
         this.player.pos.y = 0;
         this.player.pos.x = (this.grid[0].length / 2 | 0) - (this.player.matrix[0].length / 2 | 0);
+        this.canHold = true;
         
         if (this.collide(this.grid, this.player)) {
             this.state = 'GAMEOVER';
+            app.vibrate(40);
             const isRecord = app.saveHighScore('TETRIS', this.score);
             app.showGameMessage(isRecord ? "NEW RECORD" : "GRID LOCKED", "SCORE: " + this.score);
             audio.play('GAMEOVER');
         }
+    }
+
+    holdPiece() {
+        if (!this.canHold || this.state !== 'PLAYING') return;
+        const current = this.currentType;
+        if (this.heldType) {
+            const held = this.heldType;
+            this.heldType = current;
+            this.currentType = held;
+            this.player.matrix = this.createPiece(held);
+            this.player.pos.y = 0;
+            this.player.pos.x = (this.grid[0].length / 2 | 0) - (this.player.matrix[0].length / 2 | 0);
+        } else {
+            this.heldType = current;
+            this.resetPiece();
+        }
+        this.canHold = false;
+        audio.play('UI_CLICK');
     }
 
     collide(arena, player) {
@@ -1751,6 +2310,9 @@ class TetrisEngine {
             if (this.lines % 10 === 0) {
                 this.level++;
                 this.dropInterval = Math.max(10, 40 - (this.level - 1) * 4);
+                if (this.level >= 2) app.unlock('TETRIS_LVL2');
+                app.toast(app.t('level') + ' ' + this.level);
+                app.vibrate(15);
                 audio.play('POWERUP');
             } else {
                 audio.play('SCORE');
@@ -1787,6 +2349,9 @@ class TetrisEngine {
                 if (key === ' ') this.playerHardDrop();
             }
         }
+
+        const holdKey = app.input.consumePressed('c') || app.input.consumePressed('C') || app.input.consumePressed('Shift');
+        if (holdKey && this.state === 'PLAYING') this.holdPiece();
 
         if (this.state !== 'PLAYING') return;
 
@@ -1825,18 +2390,60 @@ class TetrisEngine {
         };
 
         drawMatrix(this.grid, {x: 0, y: 0});
+        const ghost = { pos: { x: this.player.pos.x, y: this.player.pos.y }, matrix: this.player.matrix };
+        while (!this.collide(this.grid, ghost)) ghost.pos.y++;
+        ghost.pos.y--;
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.18;
+        drawMatrix(ghost.matrix, ghost.pos);
+        this.ctx.restore();
         drawMatrix(this.player.matrix, this.player.pos);
 
         // UI
         this.ctx.font = "bold 24px 'Courier New'";
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
         this.ctx.textAlign = 'left';
-        this.ctx.fillText("SCORE: " + this.score + "  LVL: " + this.level, 20, 84);
+        this.ctx.fillText(app.t('score') + ": " + this.score + "  " + app.t('lvl') + ": " + this.level, 20, 84);
         // HI SCORE
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('TETRIS'), this.canvas.width - 20, 84);
+        this.ctx.fillText(app.t('hi') + ": " + app.getHighScore('TETRIS'), this.canvas.width - 20, 84);
+
+        const side = Math.max(0, Math.min(this.offsetX, this.canvas.width - (this.offsetX + this.cols * this.gridSize)));
+        if (side > 66) {
+            const cell = Math.max(8, Math.min(Math.floor(this.gridSize * 0.5), Math.floor((side - 24) / 4)));
+            this.drawPreview(this.heldType, this.offsetX - 16 - 4 * cell, this.offsetY, app.t('hold'), cell);
+            this.drawPreview(this.nextType, this.offsetX + this.cols * this.gridSize + 16, this.offsetY, app.t('next'), cell);
+        }
 
         this.particles.forEach(p => p.draw(this.ctx));
+        this.ctx.restore();
+    }
+
+    drawPreview(type, x, y, label, cell) {
+        this.ctx.save();
+        this.ctx.font = "bold 12px 'Courier New'";
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'alphabetic';
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.fillText(label, x, y + 12);
+        if (!type) { this.ctx.restore(); return; }
+        const matrix = this.createPiece(type);
+        let minX = 99, maxX = -1, minY = 99, maxY = -1;
+        matrix.forEach((row, ry) => row.forEach((v, rx) => {
+            if (v) {
+                minX = Math.min(minX, rx); maxX = Math.max(maxX, rx);
+                minY = Math.min(minY, ry); maxY = Math.max(maxY, ry);
+            }
+        }));
+        const gw = (maxX - minX + 1) * cell;
+        const gh = (maxY - minY + 1) * cell;
+        const ox = x + (4 * cell - gw) / 2;
+        const oy = y + 20 + (4 * cell - gh) / 2;
+        matrix.forEach((row, ry) => row.forEach((v, rx) => {
+            if (!v) return;
+            this.ctx.fillStyle = (v % 2 === 0) ? CONSTANTS.COLOR_FG : CONSTANTS.COLOR_HARD;
+            this.ctx.fillRect(ox + (rx - minX) * cell + 1, oy + (ry - minY) * cell + 1, cell - 2, cell - 2);
+        }));
         this.ctx.restore();
     }
 }
@@ -1860,6 +2467,10 @@ class AsteroidsEngine {
         this.asteroids = [];
         this.bullets = [];
         this.particles = [];
+        this.pickups = [];
+        this.ufo = null;
+        this.ufoTimer = 600 + Math.random() * 600;
+        this.shieldTimer = 0;
         this.shake = 0;
         
         // Spawn Asteroids
@@ -1882,6 +2493,7 @@ class AsteroidsEngine {
 
     nextWave() {
         this.wave++;
+        if (this.wave >= 5) app.unlock('ASTEROIDS_WAVE5');
         this.spawnWave(Math.min(14, 4 + this.wave));
         this.waveFlash = 90;
         this.shake = 10;
@@ -1915,6 +2527,8 @@ class AsteroidsEngine {
         this.asteroids.forEach(a => { a.x *= sx; a.y *= sy; });
         this.bullets.forEach(b => { b.x *= sx; b.y *= sy; });
         this.particles.forEach(p => { p.x *= sx; p.y *= sy; });
+        this.pickups.forEach(p => { p.x *= sx; p.y *= sy; });
+        if (this.ufo) { this.ufo.x *= sx; this.ufo.y *= sy; }
     }
 
     update() {
@@ -1925,6 +2539,29 @@ class AsteroidsEngine {
         const keys = app.input.keys;
         if(this.state === 'WAITING' && (keys['ArrowUp'] || keys[' '] || app.input.consumeAny(['ArrowUp',' ']))) { this.state = 'PLAYING'; app.hideGameMessage(); }
         if(this.state !== 'PLAYING') return;
+
+        this.shieldTimer = Math.max(0, this.shieldTimer - 1);
+        this.ufoTimer--;
+        if (!this.ufo && this.ufoTimer <= 0) {
+            this.ufo = { x: -60, y: 110, w: 44, h: 18, vx: 2 + Math.random() * 1.5 };
+            this.ufoTimer = 900 + Math.random() * 900;
+        }
+        if (this.ufo) {
+            this.ufo.x += this.ufo.vx;
+            if (this.ufo.x > this.canvas.width + 60) this.ufo = null;
+        }
+        for (let i = this.pickups.length - 1; i >= 0; i--) {
+            const pickup = this.pickups[i];
+            pickup.life--;
+            if (pickup.life <= 0) { this.pickups.splice(i, 1); continue; }
+            if (Math.hypot(this.ship.x - pickup.x, this.ship.y - pickup.y) < this.ship.r + pickup.r) {
+                this.pickups.splice(i, 1);
+                this.shieldTimer = 480;
+                this.spawnParticles(pickup.x, pickup.y, CONSTANTS.COLOR_FG);
+                app.vibrate(10);
+                audio.play('POWERUP');
+            }
+        }
 
         // Ship Control
         if(keys['ArrowLeft']) this.ship.a -= 0.1;
@@ -1963,6 +2600,18 @@ class AsteroidsEngine {
             if(b.life <= 0) this.bullets.splice(i, 1);
         }
 
+        for (let j = this.bullets.length - 1; j >= 0; j--) {
+            const b = this.bullets[j];
+            if (this.ufo && b.x > this.ufo.x && b.x < this.ufo.x + this.ufo.w && b.y > this.ufo.y && b.y < this.ufo.y + this.ufo.h) {
+                this.bullets.splice(j, 1);
+                this.score += 200;
+                this.shake = 10;
+                this.spawnParticles(this.ufo.x + this.ufo.w / 2, this.ufo.y + this.ufo.h / 2, CONSTANTS.COLOR_FG, 1.5);
+                this.ufo = null;
+                audio.play('POWERUP');
+            }
+        }
+
         // Update Asteroids
         for(let i=this.asteroids.length-1; i>=0; i--) {
             let a = this.asteroids[i];
@@ -1973,8 +2622,18 @@ class AsteroidsEngine {
             // Collision Ship
             let d = Math.sqrt((this.ship.x - a.x)**2 + (this.ship.y - a.y)**2);
             if(d < a.r + this.ship.r) {
+                if (this.shieldTimer > 0) {
+                    this.shieldTimer = 0;
+                    this.asteroids.splice(i, 1);
+                    this.score += 50;
+                    this.shake = 20;
+                    this.spawnParticles(a.x, a.y, CONSTANTS.COLOR_HARD, 1.5);
+                    audio.play('POWERUP');
+                    continue;
+                }
                 this.state = 'GAMEOVER';
                 this.shake = 30;
+                app.vibrate(50);
                 this.spawnParticles(this.ship.x, this.ship.y, CONSTANTS.COLOR_FG, 3);
                 const isRecord = app.saveHighScore('ASTEROIDS', this.score);
                 app.showGameMessage(isRecord ? "NEW RECORD" : "HULL BREACH", "SCORE: " + this.score);
@@ -1993,6 +2652,7 @@ class AsteroidsEngine {
                     this.shake = 10;
                     this.spawnParticles(a.x, a.y, CONSTANTS.COLOR_HARD);
                     audio.play('HIT');
+                    if (Math.random() < 0.08) this.pickups.push({ x: a.x, y: a.y, r: 12, life: 600 });
                     
                     // Split
                     if(a.r > 20) {
@@ -2030,6 +2690,36 @@ class AsteroidsEngine {
             this.ctx.closePath();
             this.ctx.stroke();
             this.ctx.restore();
+            if (this.shieldTimer > 0) {
+                this.ctx.save();
+                this.ctx.globalAlpha = 0.5 + 0.35 * Math.sin(performance.now() / 100);
+                this.ctx.strokeStyle = CONSTANTS.COLOR_FG;
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.arc(this.ship.x, this.ship.y, 22, 0, Math.PI * 2);
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
+        }
+
+        for (const pickup of this.pickups) {
+            this.ctx.save();
+            this.ctx.strokeStyle = CONSTANTS.COLOR_FG;
+            this.ctx.lineWidth = 2;
+            this.ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 120);
+            this.ctx.beginPath();
+            this.ctx.arc(pickup.x, pickup.y, pickup.r, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+
+        if (this.ufo) {
+            this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+            this.ctx.fillRect(this.ufo.x, this.ufo.y + 5, this.ufo.w, 7);
+            this.ctx.fillRect(this.ufo.x + 8, this.ufo.y, this.ufo.w - 16, 5);
+            this.ctx.fillStyle = CONSTANTS.COLOR_HARD;
+            this.ctx.fillRect(this.ufo.x + 12, this.ufo.y + 7, 5, 4);
+            this.ctx.fillRect(this.ufo.x + 27, this.ufo.y + 7, 5, 4);
         }
 
         // Asteroids
@@ -2057,7 +2747,7 @@ class AsteroidsEngine {
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-            this.ctx.fillText("WAVE " + this.wave, this.canvas.width/2, this.canvas.height/2 + 150);
+            this.ctx.fillText(app.t('wave') + ' ' + this.wave, this.canvas.width/2, this.canvas.height/2 + 150);
             this.ctx.restore();
         }
 
@@ -2069,9 +2759,16 @@ class AsteroidsEngine {
         this.ctx.font = "bold 30px 'Courier New'";
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
         this.ctx.textAlign = 'left';
-        this.ctx.fillText("SCORE: " + this.score + "  WAVE: " + this.wave, 20, 84);
+        this.ctx.fillText(app.t('score') + ": " + this.score + "  " + app.t('wave') + ": " + this.wave, 20, 84);
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('ASTEROIDS'), this.canvas.width - 20, 84);
+        this.ctx.fillText(app.t('hi') + ": " + app.getHighScore('ASTEROIDS'), this.canvas.width - 20, 84);
+
+        if (this.shieldTimer > 0) {
+            this.ctx.textAlign = 'center';
+            this.ctx.font = "bold 16px 'Courier New'";
+            this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+            this.ctx.fillText(app.t('shield') + ' ' + Math.ceil(this.shieldTimer / 60) + 's', this.canvas.width / 2, this.canvas.height - 24);
+        }
     }
 }
 
@@ -2094,9 +2791,37 @@ class App {
         this.uiPause = document.getElementById('pause-btn');
         this.uiPauseOverlay = document.getElementById('pause-overlay');
         this.uiTouch = document.getElementById('touch-controls');
+        this.uiRecords = document.getElementById('records-overlay');
+        this.uiSettings = document.getElementById('settings-overlay');
+        this.uiInitials = document.getElementById('initials-overlay');
+        this.uiPong = document.getElementById('pong-overlay');
+        this.uiRecordsContent = document.getElementById('records-content');
+        this.uiToast = document.getElementById('toast');
+        this.uiDailyBadge = document.getElementById('daily-badge');
         this.paused = false;
+
+        this.modalOpen = false;
+        this.daily = null;
+        this.realRandom = Math.random;
+        this.pendingRecord = null;
+        this.currentGameSavedScore = null;
+        this.leaderboards = {};
+        this.pongMode = 1;
+        this.pongDifficulty = 'normal';
+        this.settings = this.loadSettings();
+        this.stats = this.loadStats();
+        this.achievements = this.loadAchievements();
+        this.applySettings();
+        this.bindSettings();
         this.isTouch = (navigator.maxTouchPoints || 0) > 0 || window.matchMedia('(pointer: coarse)').matches;
         this.touchVisible = false;
+        this.debugMode = new URLSearchParams(location.search).has('debug');
+        this.uiDebug = document.getElementById('debug-overlay');
+        this.fpsFrames = 0;
+        this.fpsLast = performance.now();
+        this.fps = 0;
+        this.gamepadPrev = {};
+        if (this.debugMode && this.uiDebug) this.uiDebug.style.display = 'block';
 
         document.querySelectorAll('#touch-controls .touch-btn').forEach(btn => {
             const key = btn.dataset.key;
@@ -2116,6 +2841,18 @@ class App {
             btn.addEventListener('pointerleave', up);
         });
 
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('keydown', (e) => {
+                if (e.key !== 'Tab') return;
+                const focusables = Array.from(overlay.querySelectorAll('button, input, select')).filter(el => el.offsetParent !== null);
+                if (!focusables.length) return;
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            });
+        });
+
         // Évite que Space (tir / hard drop) réactive le bouton AUDIO après un clic souris.
         const muteBtn = document.getElementById('mute-btn');
         muteBtn.addEventListener('click', (e) => { if (e.detail > 0) muteBtn.blur(); });
@@ -2129,8 +2866,13 @@ class App {
             if (document.hidden && this.currentGame && !this.paused) this.togglePause(true);
         });
 
-        // Fond animé du menu
+        // Fond animé du menu + démo Pong
         this.menuParticles = [];
+        this.attract = {
+            p1: this.canvas.height / 2,
+            p2: this.canvas.height / 2,
+            ball: { x: this.canvas.width / 2, y: this.canvas.height / 2, vx: 5, vy: 3 }
+        };
         this.renderMenuHighScores();
 
         // Pas de temps fixe : le jeu tourne à 60 updates/s quel que soit l'écran.
@@ -2139,6 +2881,264 @@ class App {
         this.lastTime = performance.now();
         this.loop = this.loop.bind(this);
         this.animationId = requestAnimationFrame(this.loop);
+    }
+
+    // --- SETTINGS ---
+    loadSettings() {
+        const settings = {
+            volume: 0.3,
+            scanlines: true,
+            reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            touchSize: 'md',
+            lang: (navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en',
+            music: true,
+            haptics: true
+        };
+        try { Object.assign(settings, JSON.parse(localStorage.getItem('PLAY_SETTINGS') || '{}')); } catch (e) {}
+        return settings;
+    }
+
+    saveSettings() { try { localStorage.setItem('PLAY_SETTINGS', JSON.stringify(this.settings)); } catch (e) {} }
+
+    applySettings() {
+        REDUCED_MOTION = !!this.settings.reducedMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.body.classList.toggle('no-scanlines', !this.settings.scanlines);
+        document.body.classList.toggle('touch-small', this.settings.touchSize === 'sm');
+        document.body.classList.toggle('touch-large', this.settings.touchSize === 'lg');
+        document.body.classList.toggle('reduced-motion', !!this.settings.reducedMotion);
+        audio.setVolume(this.settings.volume);
+        audio.setMusic(this.settings.music !== false);
+        this.applyLanguage(this.settings.lang);
+    }
+
+    bindSettings() {
+        const volume = document.getElementById('set-volume');
+        volume.addEventListener('input', () => {
+            this.settings.volume = Number(volume.value) / 100;
+            audio.setVolume(this.settings.volume);
+            this.saveSettings();
+        });
+        const scanlines = document.getElementById('set-scanlines');
+        scanlines.addEventListener('change', () => {
+            this.settings.scanlines = scanlines.checked;
+            this.applySettings();
+            this.saveSettings();
+        });
+        const reduced = document.getElementById('set-reduced');
+        reduced.addEventListener('change', () => {
+            this.settings.reducedMotion = reduced.checked;
+            this.applySettings();
+            this.saveSettings();
+        });
+        const touch = document.getElementById('set-touch');
+        touch.addEventListener('change', () => {
+            this.settings.touchSize = touch.value;
+            this.applySettings();
+            this.saveSettings();
+        });
+        const music = document.getElementById('set-music');
+        music.addEventListener('change', () => {
+            this.settings.music = music.checked;
+            this.applySettings();
+            this.saveSettings();
+        });
+        const haptics = document.getElementById('set-haptics');
+        haptics.addEventListener('change', () => {
+            this.settings.haptics = haptics.checked;
+            this.saveSettings();
+        });
+        const lang = document.getElementById('set-lang');
+        lang.addEventListener('change', () => {
+            this.settings.lang = lang.value;
+            this.applySettings();
+            this.saveSettings();
+        });
+        document.getElementById('initials-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.saveInitials();
+            }
+        });
+    }
+
+    t(key) {
+        const lang = this.settings?.lang === 'fr' ? 'fr' : 'en';
+        return (UI_TEXT[lang] && UI_TEXT[lang][key]) || (UI_TEXT.en[key] !== undefined ? UI_TEXT.en[key] : key);
+    }
+
+    translateGameText(text) {
+        if (this.settings.lang !== 'fr' || !text) return text;
+        const exact = {
+            'CLICK TO START': 'CLIQUE POUR JOUER',
+            'CLICK TO LAUNCH': 'CLIQUE POUR LANCER',
+            'CLICK TO RESET': 'CLIQUE POUR REJOUER',
+            'CLICK TO RESUME': 'CLIQUE POUR REPRENDRE',
+            'CLICK TO CONTINUE': 'CLIQUE POUR CONTINUER',
+            'PRESS ARROWS TO START': 'FLÈCHES POUR JOUER',
+            'PRESS P OR CLICK RESUME': 'P OU CLIQUE REPRENDRE',
+            'NEW RECORD': 'NOUVEAU RECORD',
+            'SYSTEM FAILURE': 'ÉCHEC SYSTÈME',
+            'SIGNAL LOST': 'SIGNAL PERDU',
+            'SYSTEM CLEARED': 'SYSTÈME NETTOYÉ',
+            'ALL LEVELS CLEAR': 'TOUS LES NIVEAUX TERMINÉS',
+            'ALL WAVES CLEAR': 'TOUTES LES VAGUES TERMINÉES',
+            'INVASION SUCCESSFUL': 'INVASION RÉUSSIE',
+            'HULL BREACH': 'COQUE PERCÉE',
+            'GRID LOCKED': 'GRILLE BLOQUÉE',
+            'PLAYER WINS': 'JOUEUR GAGNE',
+            'CPU WINS': 'CPU GAGNE',
+            'P1 WINS': 'P1 GAGNE',
+            'P2 WINS': 'P2 GAGNE',
+            'P1: W/S // P2: ARROWS': 'P1: W/S // P2: FLÈCHES',
+            'ARROWS: MOVE // SPACE: FIRE': 'FLÈCHES: BOUGER // ESPACE: TIRER',
+            'ARROWS: MOVE // SPACE: DROP': 'FLÈCHES: BOUGER // ESPACE: POSER',
+            'ARROWS: MOVE // SPACE: DROP // C: HOLD': 'FLÈCHES: BOUGER // ESPACE: POSER // C: RÉSERVE',
+            'ARROWS: DRIVE // SPACE: FIRE': 'FLÈCHES: PILOTER // ESPACE: TIRER',
+            'WHITE = 2 HITS': 'BLANC = 2 COUPS'
+        };
+        if (exact[text]) return exact[text];
+        return text
+            .replace('CLICK TO LAUNCH', 'CLIQUE POUR LANCER')
+            .replace('CLICK TO RESUME', 'CLIQUE POUR REPRENDRE')
+            .replace('CLICK TO CONTINUE', 'CLIQUE POUR CONTINUER')
+            .replace('CLICK TO RESET', 'CLIQUE POUR REJOUER')
+            .replace('CLICK TO START', 'CLIQUE POUR JOUER')
+            .replace('WHITE = 2 HITS', 'BLANC = 2 COUPS')
+            .replace(/^ENDLESS (\d+)$/, 'SANS FIN $1')
+            .replace(/LEVEL (\d+)/g, 'NIVEAU $1')
+            .replace(/WAVE (\d+)/g, 'VAGUE $1')
+            .replace(/LVL:/g, 'NIV:')
+            .replace(/LIVES:/g, 'VIES:')
+            .replace(/\bHI:/g, 'REC:')
+            .replace(/ CLEAR$/, ' TERMINÉ');
+    }
+
+    applyLanguage(lang) {
+        this.settings.lang = lang === 'fr' ? 'fr' : 'en';
+        document.documentElement.lang = this.settings.lang;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            el.textContent = this.t(el.dataset.i18n);
+        });
+        const pauseBig = this.uiPauseOverlay.querySelector('.big-msg');
+        const pauseSub = this.uiPauseOverlay.querySelector('.sub-msg');
+        if (pauseBig) pauseBig.textContent = this.t('paused');
+        if (pauseSub) pauseSub.textContent = this.t('pressResume');
+        this.updateMuteLabel();
+        this.updatePauseLabel();
+        this.updateTouchAction();
+        this.renderMenuHighScores();
+        this.renderDailyButton();
+        this.updateDailyBadge();
+        if (this.uiRecords && this.uiRecords.classList.contains('open')) this.renderRecords();
+        if (this.uiInitials && this.uiInitials.classList.contains('open')) this.updateInitialsText();
+    }
+
+    updateMuteLabel() {
+        const btn = document.getElementById('mute-btn');
+        if (!btn) return;
+        btn.innerText = audio.muted ? this.t('audioOff') : this.t('audioOn');
+        btn.setAttribute('aria-pressed', String(audio.muted));
+    }
+
+    updatePauseLabel() {
+        this.uiPause.innerText = this.paused ? this.t('resume') : this.t('pause');
+    }
+
+    updateTouchAction() {
+        const el = document.getElementById('touch-action');
+        if (!el) return;
+        el.textContent = this.currentGameKey === 'TETRIS' ? this.t('drop') : this.t('fire');
+        const hold = document.getElementById('touch-hold');
+        if (hold) hold.textContent = this.t('hold');
+    }
+
+    // --- STATS / ACHIEVEMENTS ---
+    loadStats() {
+        const plays = {};
+        ['PONG','BREAKOUT','SNAKE','INVADERS','TETRIS','ASTEROIDS'].forEach(g => plays[g] = 0);
+        const stats = { plays, pongWins: 0 };
+        try { Object.assign(stats, JSON.parse(localStorage.getItem('PLAY_STATS') || '{}')); } catch (e) {}
+        if (!stats.plays) stats.plays = plays;
+        return stats;
+    }
+
+    saveStats() { try { localStorage.setItem('PLAY_STATS', JSON.stringify(this.stats)); } catch (e) {} }
+
+    recordPlay(game) {
+        this.stats.plays[game] = (this.stats.plays[game] || 0) + 1;
+        this.saveStats();
+        this.unlock('FIRST_RUN');
+    }
+
+    recordPongWin() {
+        this.stats.pongWins = (this.stats.pongWins || 0) + 1;
+        this.saveStats();
+        this.unlock('PONG_WIN');
+    }
+
+    loadAchievements() {
+        try { return JSON.parse(localStorage.getItem('PLAY_ACH') || '{}') || {}; } catch (e) { return {}; }
+    }
+
+    saveAchievements() { try { localStorage.setItem('PLAY_ACH', JSON.stringify(this.achievements)); } catch (e) {} }
+
+    unlock(id) {
+        if (this.achievements[id]) return;
+        const achievement = ACHIEVEMENTS.find(a => a.id === id);
+        if (!achievement) return;
+        this.achievements[id] = true;
+        this.saveAchievements();
+        this.toast(this.t('achievementUnlocked') + ': ' + (this.settings.lang === 'fr' ? achievement.fr : achievement.en));
+    }
+
+    toast(text) {
+        if (!this.uiToast) return;
+        this.uiToast.textContent = text;
+        this.uiToast.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => this.uiToast.classList.remove('show'), 2600);
+    }
+
+    vibrate(pattern) {
+        if (this.settings.haptics === false) return;
+        if (navigator.vibrate) {
+            try { navigator.vibrate(pattern); } catch (e) {}
+        }
+    }
+
+    // --- LEADERBOARDS ---
+    getLeaderboard(key) {
+        if (this.leaderboards[key]) return this.leaderboards[key];
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('PLAY_TOP_' + key) || '[]'); } catch (e) {}
+        if (!Array.isArray(list)) list = [];
+        list = list.filter(e => e && typeof e.score === 'number').slice(0, 5);
+        this.leaderboards[key] = list;
+        return list;
+    }
+
+    saveLeaderboard(key) {
+        try { localStorage.setItem('PLAY_TOP_' + key, JSON.stringify(this.leaderboards[key] || [])); } catch (e) {}
+    }
+
+    qualifies(key, score) {
+        if (score <= 0) return false;
+        const list = this.getLeaderboard(key);
+        return list.length < 5 || score > list[list.length - 1].score;
+    }
+
+    addLeaderboard(key, score, initials = 'P1') {
+        const list = this.getLeaderboard(key);
+        const entry = {
+            score: Math.round(score),
+            initials: String(initials || 'P1').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'P1',
+            date: this.todayKey()
+        };
+        list.push(entry);
+        list.sort((a, b) => b.score - a.score);
+        list.splice(5);
+        this.saveLeaderboard(key);
+        return entry;
     }
 
     // --- HIGH SCORE SYSTEM ---
@@ -2151,20 +3151,192 @@ class App {
         return this.highScores[game];
     }
 
-    saveHighScore(game, score) {
-        if(score > this.getHighScore(game)) {
+    saveHighScore(game, score, opts = {}) {
+        const daily = !!(this.daily && this.daily.game === game);
+        const key = daily ? 'DAILY:' + this.daily.date : game;
+        const best = daily ? (this.getLeaderboard(key)[0]?.score || 0) : this.getHighScore(game);
+        const isRecord = score > best;
+        if (!daily && isRecord) {
             this.highScores[game] = score;
             try { localStorage.setItem('PLAY_HI_' + game, String(score)); } catch (e) {}
             this.renderMenuHighScores();
-            return true; // New Record!
         }
-        return false;
+        let entry = null;
+        if (this.qualifies(key, score)) {
+            entry = this.addLeaderboard(key, score, 'P1');
+        }
+        if (opts.prompt !== false && entry) {
+            this.openInitials(key, entry, isRecord, game);
+        }
+        this.currentGameSavedScore = score;
+        return isRecord;
     }
 
     renderMenuHighScores() {
+        const hi = this.t('hi');
         document.querySelectorAll('.menu-hi[data-hi]').forEach(el => {
-            el.textContent = 'HI ' + this.getHighScore(el.dataset.hi);
+            el.textContent = hi + ' ' + this.getHighScore(el.dataset.hi);
         });
+    }
+
+    // --- RECORDS / SETTINGS / INITIALS ---
+    openRecords() {
+        this.modalOpen = true;
+        this.uiRecords.classList.add('open');
+        this.renderRecords();
+        setTimeout(() => this.uiRecords.querySelector('.modal-head button')?.focus(), 30);
+    }
+
+    renderRecords() {
+        const lang = this.settings.lang === 'fr' ? 'fr' : 'en';
+        const games = ['BREAKOUT','SNAKE','INVADERS','TETRIS','ASTEROIDS'];
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        const totalPlays = Object.values(this.stats.plays || {}).reduce((a, b) => a + b, 0);
+        let html = `<div class="stats-line">${this.t('plays')}: ${totalPlays} &nbsp; // &nbsp; ${this.t('pongWins')}: ${this.stats.pongWins || 0}</div>`;
+        for (const game of games) {
+            const list = this.getLeaderboard(game);
+            html += `<div class="record-game"><h3>${game}</h3>`;
+            if (!list.length) html += `<div class="record-row"><span class="date">${this.t('noScores')}</span></div>`;
+            list.forEach((row, i) => {
+                html += `<div class="record-row"><span class="pos">${i + 1}.</span><span class="initials">${esc(row.initials || 'P1')}</span><span class="score">${row.score}</span><span class="date">${esc(row.date || '')}</span></div>`;
+            });
+            html += '</div>';
+        }
+        const dailyKey = 'DAILY:' + this.todayKey();
+        const dailyList = this.getLeaderboard(dailyKey);
+        html += `<div class="record-game"><h3>${this.t('dailyChallenge')} // ${this.dailyGame()} // ${this.todayKey()}</h3>`;
+        if (!dailyList.length) html += `<div class="record-row"><span class="date">${this.t('noScores')}</span></div>`;
+        dailyList.forEach((row, i) => {
+            html += `<div class="record-row"><span class="pos">${i + 1}.</span><span class="initials">${esc(row.initials || 'P1')}</span><span class="score">${row.score}</span><span class="date">${esc(row.date || '')}</span></div>`;
+        });
+        html += '</div>';
+        html += `<h3>${this.t('achievements')}</h3><div class="ach-list">`;
+        for (const a of ACHIEVEMENTS) {
+            const unlocked = !!this.achievements[a.id];
+            html += `<div class="ach ${unlocked ? 'unlocked' : ''}"><strong>${unlocked ? '✓ ' : ''}${esc(lang === 'fr' ? a.fr : a.en)}</strong><small>${esc(lang === 'fr' ? a.frDesc : a.enDesc)}</small></div>`;
+        }
+        html += '</div>';
+        this.uiRecordsContent.innerHTML = html;
+    }
+
+    openSettings() {
+        this.modalOpen = true;
+        this.uiSettings.classList.add('open');
+        setTimeout(() => document.getElementById('set-volume').focus(), 30);
+        document.getElementById('set-volume').value = Math.round(this.settings.volume * 100);
+        document.getElementById('set-scanlines').checked = !!this.settings.scanlines;
+        document.getElementById('set-reduced').checked = !!this.settings.reducedMotion;
+        document.getElementById('set-touch').value = this.settings.touchSize;
+        document.getElementById('set-lang').value = this.settings.lang;
+        document.getElementById('set-music').checked = this.settings.music !== false;
+        document.getElementById('set-haptics').checked = this.settings.haptics !== false;
+    }
+
+    openPongOptions() {
+        this.modalOpen = true;
+        this.uiPong.classList.add('open');
+        this.uiPong.classList.toggle('hide-difficulty', this.pongMode === 2);
+        this.uiPong.querySelectorAll('[data-pong-mode]').forEach(btn => btn.classList.toggle('selected', Number(btn.dataset.pongMode) === this.pongMode));
+        this.uiPong.querySelectorAll('[data-pong-diff]').forEach(btn => btn.classList.toggle('selected', btn.dataset.pongDiff === this.pongDifficulty));
+    }
+
+    setPongMode(mode) {
+        this.pongMode = Number(mode) === 2 ? 2 : 1;
+        this.uiPong.classList.toggle('hide-difficulty', this.pongMode === 2);
+        this.uiPong.querySelectorAll('[data-pong-mode]').forEach(btn => btn.classList.toggle('selected', Number(btn.dataset.pongMode) === this.pongMode));
+    }
+
+    setPongDifficulty(difficulty) {
+        this.pongDifficulty = ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
+        this.uiPong.querySelectorAll('[data-pong-diff]').forEach(btn => btn.classList.toggle('selected', btn.dataset.pongDiff === this.pongDifficulty));
+    }
+
+    startPong() {
+        const twoPlayer = this.pongMode === 2;
+        const difficulty = this.pongDifficulty;
+        this.closeModal();
+        this.launch('PONG', { twoPlayer, difficulty });
+    }
+
+    closeModal() {
+        this.modalOpen = false;
+        this.pendingRecord = null;
+        this.uiRecords.classList.remove('open');
+        this.uiSettings.classList.remove('open');
+        this.uiInitials.classList.remove('open');
+        this.uiPong.classList.remove('open');
+    }
+
+    openInitials(key, entry, isRecord, game) {
+        this.pendingRecord = { key, entry };
+        this.modalOpen = true;
+        this.pendingInitials = { isRecord, game, entry };
+        this.updateInitialsText();
+        this.uiInitials.classList.add('open');
+        audio.play('POWERUP');
+        this.vibrate([10, 40, 10]);
+        const input = document.getElementById('initials-input');
+        input.value = entry.initials || 'P1';
+        setTimeout(() => { input.focus(); input.select(); }, 30);
+    }
+
+    updateInitialsText() {
+        if (!this.pendingInitials) return;
+        const { isRecord, game, entry } = this.pendingInitials;
+        document.getElementById('initials-title').textContent = isRecord ? this.t('newRecord') : this.t('top5');
+        document.getElementById('initials-score').textContent = `${game} // ${entry.score}`;
+    }
+
+    saveInitials() {
+        if (!this.pendingRecord) return this.closeModal();
+        const input = document.getElementById('initials-input');
+        const initials = (input.value || 'P1').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'P1';
+        this.pendingRecord.entry.initials = initials;
+        this.saveLeaderboard(this.pendingRecord.key);
+        this.closeModal();
+        this.toast((this.settings.lang === 'fr' ? 'SCORE ENREGISTRÉ' : 'SCORE SAVED') + ': ' + this.pendingInitials?.game + ' ' + initials);
+        this.pendingInitials = null;
+    }
+
+    // --- DAILY ---
+    todayKey() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    dailyGame(date = this.todayKey()) {
+        const pool = ['BREAKOUT','SNAKE','INVADERS','TETRIS','ASTEROIDS'];
+        let h = 2166136261;
+        for (const c of date) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+        return pool[h % pool.length];
+    }
+
+    dailySeed(str) {
+        let h = 2166136261;
+        for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+        return h;
+    }
+
+    renderDailyButton() {
+        const el = document.getElementById('daily-btn');
+        if (el) el.textContent = this.t('daily') + ': ' + this.dailyGame();
+    }
+
+    updateDailyBadge() {
+        if (!this.uiDailyBadge) return;
+        if (!this.daily) {
+            this.uiDailyBadge.style.display = 'none';
+            return;
+        }
+        this.uiDailyBadge.textContent = this.t('daily') + ' // ' + this.daily.game + ' // ' + this.daily.date;
+        this.uiDailyBadge.style.display = 'block';
+    }
+
+    launchDaily() {
+        const date = this.todayKey();
+        const game = this.dailyGame(date);
+        this.launch(game, { daily: { date, game } });
+        this.unlock('DAILY');
     }
 
     resize() {
@@ -2179,7 +3351,7 @@ class App {
     togglePause(silent = false) {
         if (!this.currentGame) return;
         this.paused = !this.paused;
-        this.uiPause.innerText = this.paused ? 'RESUME' : 'PAUSE';
+        this.updatePauseLabel();
         this.uiPause.setAttribute('aria-pressed', String(this.paused));
         this.uiPauseOverlay.style.display = this.paused ? 'flex' : 'none';
         this.input.reset();
@@ -2197,12 +3369,23 @@ class App {
         document.querySelectorAll('#touch-controls .touch-btn.pressed').forEach(btn => btn.classList.remove('pressed'));
     }
 
-    launch(gameType) {
+    launch(gameType, options = {}) {
+        if (options.daily) {
+            this.daily = options.daily;
+            Math.random = mulberry32(this.dailySeed(options.daily.date + ':' + options.daily.game));
+        } else {
+            this.daily = null;
+            Math.random = this.realRandom;
+        }
+        this.updateDailyBadge();
+        this.currentGameSavedScore = null;
+        this.recordPlay(gameType);
+
         // Cacher Menu, Montrer Retour
         this.uiMenu.style.display = 'none';
         this.uiBack.style.display = 'block';
         this.uiPause.style.display = 'block';
-        this.uiPause.innerText = 'PAUSE';
+        this.updatePauseLabel();
         this.uiPause.setAttribute('aria-pressed', 'false');
         this.uiPauseOverlay.style.display = 'none';
         this.paused = false;
@@ -2217,11 +3400,12 @@ class App {
         this.touchVisible = this.isTouch && ['SNAKE','TETRIS','INVADERS','ASTEROIDS'].includes(gameType);
         this.uiTouch.style.display = this.touchVisible ? 'flex' : 'none';
         this.clearTouchButtons();
-        document.getElementById('touch-action').textContent = gameType === 'TETRIS' ? 'DROP' : 'FIRE';
+        document.getElementById('touch-action').textContent = gameType === 'TETRIS' ? this.t('drop') : this.t('fire');
+        document.getElementById('touch-hold').style.display = gameType === 'TETRIS' ? 'block' : 'none';
         document.getElementById('touch-action-wrap').style.visibility = gameType === 'SNAKE' ? 'hidden' : 'visible';
 
         if (gameType === 'PONG') {
-            this.currentGame = new PongEngine(this.canvas, this.ctx);
+            this.currentGame = new PongEngine(this.canvas, this.ctx, options);
         } else if (gameType === 'BREAKOUT') {
             this.currentGame = new BreakoutEngine(this.canvas, this.ctx);
         } else if (gameType === 'SNAKE') {
@@ -2236,18 +3420,23 @@ class App {
     }
 
     loadMenu() {
-        if (this.currentGame && this.currentGameKey && this.currentGameKey !== 'PONG' && typeof this.currentGame.score === 'number') {
-            this.saveHighScore(this.currentGameKey, this.currentGame.score);
+        if (this.currentGame && this.currentGameKey && this.currentGameKey !== 'PONG' && typeof this.currentGame.score === 'number' && this.currentGame.score !== this.currentGameSavedScore) {
+            this.saveHighScore(this.currentGameKey, this.currentGame.score, { prompt: false });
         }
+        this.closeModal();
         this.currentGame = null;
         this.currentGameKey = null;
+        this.daily = null;
+        Math.random = this.realRandom;
+        this.uiDailyBadge.style.display = 'none';
+        this.currentGameSavedScore = null;
         this.paused = false;
         this.input.reset();
         this.accumulator = 0;
         this.uiMenu.style.display = 'block';
         this.uiBack.style.display = 'none';
         this.uiPause.style.display = 'none';
-        this.uiPause.innerText = 'PAUSE';
+        this.updatePauseLabel();
         this.uiPause.setAttribute('aria-pressed', 'false');
         this.uiPauseOverlay.style.display = 'none';
         this.touchVisible = false;
@@ -2263,12 +3452,61 @@ class App {
 
     showGameMessage(title, sub) {
         this.uiMessage.style.display = 'block';
-        document.getElementById('msg-title').innerText = title;
-        document.getElementById('msg-sub').innerText = sub;
+        document.getElementById('msg-title').innerText = this.translateGameText(title);
+        document.getElementById('msg-sub').innerText = this.translateGameText(sub);
     }
 
     hideGameMessage() {
         this.uiMessage.style.display = 'none';
+    }
+
+    pollGamepad() {
+        if (!navigator.getGamepads) return;
+        const pad = Array.from(navigator.getGamepads()).find(p => p);
+        if (!pad) return;
+        const prev = this.gamepadPrev || {};
+        const next = {};
+        const buttons = { 12: 'ArrowUp', 13: 'ArrowDown', 14: 'ArrowLeft', 15: 'ArrowRight', 0: ' ' };
+        for (const [index, key] of Object.entries(buttons)) {
+            const down = !!pad.buttons[Number(index)]?.pressed;
+            const id = 'btn' + index;
+            if (down && !prev[id]) this.input.press(key);
+            if (!down && prev[id]) this.input.release(key);
+            next[id] = down;
+        }
+        const ax = pad.axes[0] || 0;
+        const ay = pad.axes[1] || 0;
+        const axes = { ArrowLeft: ax < -0.5, ArrowRight: ax > 0.5, ArrowUp: ay < -0.5, ArrowDown: ay > 0.5 };
+        for (const [key, down] of Object.entries(axes)) {
+            const id = 'axis' + key;
+            if (down && !prev[id]) this.input.press(key);
+            if (!down && prev[id]) this.input.release(key);
+            next[id] = down;
+        }
+        const start = !!pad.buttons[9]?.pressed;
+        if (start && !prev.start && this.currentGame) this.togglePause();
+        next.start = start;
+        const hold = !!pad.buttons[1]?.pressed;
+        if (hold && !prev.hold && this.currentGameKey === 'TETRIS') this.input.press('c');
+        if (!hold && prev.hold) this.input.release('c');
+        next.hold = hold;
+        if (this.currentGameKey === 'PONG' && this.currentGame && !this.currentGame.twoPlayer) this.input.y = (ay + 1) / 2 * this.canvas.height;
+        if (this.currentGameKey === 'BREAKOUT') this.input.x = (ax + 1) / 2 * this.canvas.width;
+        this.gamepadPrev = next;
+    }
+
+    updateDebug() {
+        if (!this.debugMode || !this.uiDebug) return;
+        this.fpsFrames++;
+        const now = performance.now();
+        if (now - this.fpsLast >= 500) {
+            this.fps = Math.round(this.fpsFrames * 1000 / (now - this.fpsLast));
+            this.fpsFrames = 0;
+            this.fpsLast = now;
+        }
+        const game = this.currentGame;
+        const score = game ? (game.score ?? game.p1?.score ?? '') : '';
+        this.uiDebug.textContent = `FPS ${this.fps} // ${game ? game.constructor.name : 'MENU'} // ${game ? game.state : ''} // ${score}`;
     }
 
     updateMenu() {
@@ -2281,14 +3519,52 @@ class App {
             p.life -= 0.005;
         });
         this.menuParticles = this.menuParticles.filter(p => p.life > 0);
+
+        if (REDUCED_MOTION) return;
+
+        // Démo Pong en fond
+        const d = this.attract;
+        if (!d) return;
+        const w = this.canvas.width, h = this.canvas.height;
+        d.p1 += ((d.ball.y - 60) - d.p1) * 0.06;
+        d.p2 += ((d.ball.y - 60) - d.p2) * 0.06;
+        d.p1 = Math.max(0, Math.min(h - 120, d.p1));
+        d.p2 = Math.max(0, Math.min(h - 120, d.p2));
+        d.ball.x += d.ball.vx;
+        d.ball.y += d.ball.vy;
+        if (d.ball.y <= 0 || d.ball.y + 16 >= h) d.ball.vy *= -1;
+        if (d.ball.x <= 70 && d.ball.y + 16 > d.p1 && d.ball.y < d.p1 + 120) { d.ball.x = 70; d.ball.vx = Math.abs(d.ball.vx); }
+        if (d.ball.x >= w - 86 && d.ball.y + 16 > d.p2 && d.ball.y < d.p2 + 120) { d.ball.x = w - 86; d.ball.vx = -Math.abs(d.ball.vx); }
+        if (d.ball.x < -30 || d.ball.x > w + 30) {
+            d.ball.x = w / 2; d.ball.y = h / 2;
+            d.ball.vx = (Math.random() < 0.5 ? 1 : -1) * (4 + Math.random() * 2);
+            d.ball.vy = (Math.random() - 0.5) * 5;
+        }
     }
 
     drawMenu() {
         this.ctx.fillStyle = CONSTANTS.COLOR_BG;
         this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
 
-        this.menuParticles.forEach(p => p.draw(this.ctx));
+        const d = this.attract;
+        if (d) {
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.2;
+            this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+            this.ctx.fillRect(50, d.p1, 20, 120);
+            this.ctx.fillRect(this.canvas.width - 70, d.p2, 20, 120);
+            this.ctx.fillStyle = CONSTANTS.COLOR_HARD;
+            this.ctx.fillRect(d.ball.x, d.ball.y, 16, 16);
+            this.ctx.strokeStyle = '#111';
+            this.ctx.lineWidth = 8;
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.canvas.width / 2, 0);
+            this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
 
+        this.menuParticles.forEach(p => p.draw(this.ctx));
     }
 
     loop(now) {
@@ -2319,6 +3595,8 @@ class App {
         if (this.currentGame) this.currentGame.draw();
         else this.drawMenu();
 
+        this.pollGamepad();
+        this.updateDebug();
         requestAnimationFrame(this.loop);
     }
 }
@@ -2326,6 +3604,13 @@ class App {
 // Initialisation
 const app = new App();
 
+</script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+    }
 </script>
 </body>
 </html>
