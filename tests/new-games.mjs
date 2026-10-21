@@ -27,6 +27,24 @@ const mazeNext = await page.evaluate(() => ({ level: app.currentGame.level, stat
 check(mazeNext.level === 4 && mazeNext.state === 'PLAYING', 'Maze advances to level 4');
 await page.evaluate(() => app.loadMenu());
 
+// Maze wall collision and queued turn (regression: player must not leave the grid)
+const mazeMove = await page.evaluate(() => {
+  app.launch('MAZE');
+  const g = app.currentGame;
+  g.state = 'PLAYING';
+  g.ghosts = [];
+  g.player = { cx: 13, cy: 11, dir: { x: 1, y: 0 }, nextDir: { x: 1, y: 0 }, progress: 0 };
+  for (let i = 0; i < 20; i++) g.movePlayer();
+  const wall = { cx: g.player.cx, cy: g.player.cy, dir: g.player.dir };
+  g.player = { cx: 7, cy: 11, dir: { x: 1, y: 0 }, nextDir: { x: 0, y: -1 }, progress: 0 };
+  g.movePlayer();
+  const turn = { dir: g.player.dir, cx: g.player.cx, cy: g.player.cy };
+  return { wall, turn };
+});
+check(mazeMove.wall.cx === 13 && mazeMove.wall.dir.x === 0, 'Maze blocks border wall');
+check(mazeMove.turn.dir.y === -1, 'Maze applies queued turn');
+await page.evaluate(() => app.loadMenu());
+
 // Tron: 3 round wins unlock and end the match
 const tron = await page.evaluate(() => {
   app.launch('TRON');

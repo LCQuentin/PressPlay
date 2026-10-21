@@ -2987,11 +2987,16 @@ class NeonMazeEngine {
         if (key === 'ArrowRight') this.player.nextDir = { x: 1, y: 0 };
     }
 
+    choosePlayerDir(p) {
+        if (this.canMove(p.cx, p.cy, p.nextDir)) p.dir = { ...p.nextDir };
+        if (!this.canMove(p.cx, p.cy, p.dir)) p.dir = { x: 0, y: 0 };
+    }
+
     movePlayer() {
         const p = this.player;
-        if (p.progress === 0) {
-            if (this.canMove(p.cx, p.cy, p.nextDir)) p.dir = { ...p.nextDir };
-            if (!this.canMove(p.cx, p.cy, p.dir)) p.dir = { x: 0, y: 0 };
+        if (p.progress < 1e-9) {
+            p.progress = 0;
+            this.choosePlayerDir(p);
         }
         if (!p.dir.x && !p.dir.y) return;
         p.progress += 1 / 7;
@@ -3000,10 +3005,8 @@ class NeonMazeEngine {
             p.cx += p.dir.x;
             p.cy += p.dir.y;
             this.eatAt(p.cx, p.cy);
-            if (p.progress === 0) {
-                if (this.canMove(p.cx, p.cy, p.nextDir)) p.dir = { ...p.nextDir };
-                if (!this.canMove(p.cx, p.cy, p.dir)) p.dir = { x: 0, y: 0 };
-            }
+            this.choosePlayerDir(p);
+            if (!p.dir.x && !p.dir.y) p.progress = 0;
         }
     }
 
