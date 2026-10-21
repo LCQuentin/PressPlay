@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PLAY // HUB</title>
     <style>
         /* --- ESTHÉTIQUE GLOBALE --- */
@@ -21,7 +21,7 @@
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
             user-select: none;
-            touch-action: none;
+            touch-action: manipulation;
             color: var(--accent-color);
         }
 
@@ -33,6 +33,22 @@
             top: 0;
             left: 0;
             z-index: 1;
+            image-rendering: pixelated;
+            touch-action: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px);
+        }
+
+        button:focus-visible {
+            outline: 3px solid var(--secondary-color);
+            outline-offset: 3px;
         }
 
         /* --- UI LAYER --- */
@@ -52,6 +68,7 @@
         #main-menu {
             text-align: center;
             pointer-events: auto;
+            touch-action: pan-y;
             background: rgba(5, 5, 5, 0.95);
             padding: 30px;
             border: 4px solid var(--accent-color);
@@ -96,6 +113,16 @@
             box-shadow: 3px 3px 0px var(--secondary-color);
         }
 
+        .menu-hi {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.7rem;
+            letter-spacing: 0;
+            font-weight: normal;
+            opacity: 0.75;
+            pointer-events: none;
+        }
+
         /* --- BOUTONS NAV --- */
         #back-btn, #mute-btn, #pause-btn {
             position: absolute;
@@ -130,6 +157,61 @@
             pointer-events: none;
         }
 
+        #touch-controls {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 18;
+            display: none;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 12px 18px;
+            pointer-events: none;
+        }
+
+        #touch-dpad {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            pointer-events: none;
+        }
+
+        .touch-btn {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: none;
+            pointer-events: auto;
+        }
+
+        .touch-btn:active, .touch-btn.pressed {
+            background: var(--accent-color);
+            color: #000;
+        }
+
+        .touch-up { left: 51px; top: 0; }
+        .touch-left { left: 0; top: 51px; }
+        .touch-down { left: 51px; top: 102px; }
+        .touch-right { left: 102px; top: 51px; }
+
+        #touch-action-wrap { pointer-events: none; }
+
+        #touch-action {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            font-size: 0.85rem;
+        }
+
         /* --- OVERLAYS JEU --- */
         #game-message {
             display: none;
@@ -150,14 +232,18 @@
             display: inline-block;
         }
 
+        @media (prefers-reduced-motion: reduce) {
+            .menu-btn { transition: none; }
+            button:active { transform: none !important; }
+        }
     </style>
 </head>
 <body>
 
     <!-- NAV UI -->
     <button id="back-btn" onclick="app.loadMenu()">← TERMINAL</button>
-    <button id="pause-btn" onclick="app.togglePause()">PAUSE</button>
-    <button id="mute-btn" onclick="audio.toggleMute()">AUDIO: ON</button>
+    <button id="pause-btn" onclick="app.togglePause()" aria-pressed="false">PAUSE</button>
+    <button id="mute-btn" onclick="audio.toggleMute()" aria-pressed="false">AUDIO: ON</button>
 
     <!-- UI LAYER -->
     <div id="ui-layer">
@@ -166,17 +252,17 @@
         <div id="main-menu">
             <h1 class="title">PLAY</h1>
             <div class="grid-menu">
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('PONG')">PONG</button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('BREAKOUT')">BREAKOUT</button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('SNAKE')">SNAKE</button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('INVADERS')">INVADERS</button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('TETRIS')">TETRIS</button>
-                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('ASTEROIDS')">ASTEROIDS</button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('PONG')">PONG<span class="menu-hi">FIRST TO 5</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('BREAKOUT')">BREAKOUT<span class="menu-hi" data-hi="BREAKOUT">HI 0</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('SNAKE')">SNAKE<span class="menu-hi" data-hi="SNAKE">HI 0</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('INVADERS')">INVADERS<span class="menu-hi" data-hi="INVADERS">HI 0</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('TETRIS')">TETRIS<span class="menu-hi" data-hi="TETRIS">HI 0</span></button>
+                <button class="menu-btn" onmouseenter="audio.play('UI_HOVER')" onclick="app.launch('ASTEROIDS')">ASTEROIDS<span class="menu-hi" data-hi="ASTEROIDS">HI 0</span></button>
             </div>
         </div>
 
         <!-- MESSAGES IN-GAME (Pause / Game Over) -->
-        <div id="game-message">
+        <div id="game-message" role="status" aria-live="polite">
             <div id="msg-title" class="big-msg">SYSTEM READY</div>
             <div id="msg-sub" class="sub-msg">CLICK TO START</div>
         </div>
@@ -188,7 +274,19 @@
 
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <div id="touch-controls">
+        <div id="touch-dpad">
+            <button class="touch-btn touch-up" data-key="ArrowUp" aria-label="Haut">▲</button>
+            <button class="touch-btn touch-left" data-key="ArrowLeft" aria-label="Gauche">◀</button>
+            <button class="touch-btn touch-down" data-key="ArrowDown" aria-label="Bas">▼</button>
+            <button class="touch-btn touch-right" data-key="ArrowRight" aria-label="Droite">▶</button>
+        </div>
+        <div id="touch-action-wrap">
+            <button id="touch-action" class="touch-btn" data-key=" " aria-label="Action">FIRE</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" aria-label="Zone de jeu de la borne arcade">Votre navigateur ne supporte pas canvas.</canvas>
 
 <script>
 /**
@@ -205,12 +303,20 @@ const CONSTANTS = {
     GLITCH_CHANCE: 0.015
 };
 
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // --- SYSTÈME AUDIO PROCÉDURAL ---
 class AudioController {
     constructor() {
         this.ctx = null;
         this.muted = false;
         this.masterGain = null;
+        try { this.muted = localStorage.getItem('PLAY_MUTED') === '1'; } catch (e) {}
+        const btn = document.getElementById('mute-btn');
+        if (btn) {
+            btn.innerText = this.muted ? 'AUDIO: OFF' : 'AUDIO: ON';
+            btn.setAttribute('aria-pressed', String(this.muted));
+        }
     }
 
     init() {
@@ -228,7 +334,10 @@ class AudioController {
 
     toggleMute() {
         this.muted = !this.muted;
-        document.getElementById('mute-btn').innerText = this.muted ? "AUDIO: OFF" : "AUDIO: ON";
+        const btn = document.getElementById('mute-btn');
+        btn.innerText = this.muted ? "AUDIO: OFF" : "AUDIO: ON";
+        btn.setAttribute('aria-pressed', String(this.muted));
+        try { localStorage.setItem('PLAY_MUTED', this.muted ? '1' : '0'); } catch (e) {}
         if(this.ctx) {
             if(this.muted) this.masterGain.disconnect();
             else this.masterGain.connect(this.ctx.destination);
@@ -395,7 +504,7 @@ class InputSystem {
         document.addEventListener('touchmove', (e) => {
             this.x = e.touches[0].clientX;
             this.y = e.touches[0].clientY;
-            e.preventDefault(); 
+            if (app.currentGame && !app.paused) e.preventDefault();
         }, { passive: false });
 
         document.addEventListener('keydown', (e) => {
@@ -423,7 +532,7 @@ class InputSystem {
             // Initialisation audio sur première interaction utilisateur
             audio.init(); 
             
-            if(e.target.tagName === 'BUTTON') return;
+            if(e.target.closest && e.target.closest('button')) return;
             if (app.paused) return;
             if (app.currentGame && app.currentGame.handleClick) {
                 app.currentGame.handleClick();
@@ -435,6 +544,16 @@ class InputSystem {
         this.keys = {};
         this.lastArrow = null;
         this.pressed = {};
+    }
+
+    press(key) {
+        if (!this.keys[key]) this.pressed[key] = performance.now();
+        this.keys[key] = true;
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(key)) this.lastArrow = key;
+    }
+
+    release(key) {
+        this.keys[key] = false;
     }
 
     consumeArrow() {
@@ -525,6 +644,17 @@ class PongEngine {
         this.ball.vy = Math.sin(angle) * this.ball.speed;
         this.ball.edgeTimer = 0;
         this.aiError = 0;
+    }
+
+    onResize(oldW, oldH, newW, newH) {
+        const sx = newW / oldW, sy = newH / oldH;
+        this.p1.y *= sy;
+        this.ai.y *= sy;
+        this.ball.x *= sx;
+        this.ball.y *= sy;
+        this.ball.edgeTimer = 0;
+        [this.p1, this.ai].forEach(p => p.y = Math.max(0, Math.min(newH - this.paddleH, p.y)));
+        this.ball.y = Math.max(0, Math.min(newH - this.ballSize, this.ball.y));
     }
 
     handleClick() {
@@ -631,7 +761,7 @@ class PongEngine {
         this.ctx.fillStyle = CONSTANTS.COLOR_BG;
         this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        if(this.shake > 0) { this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake); }
+        if(this.shake > 0 && !REDUCED_MOTION) { this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake); }
         this.ctx.font = "bold 30vh 'Courier New'";
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -648,7 +778,6 @@ class PongEngine {
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
         this.ctx.fillRect(this.ball.x, this.ball.y, this.ballSize, this.ballSize);
         this.particles.forEach(p => p.draw(this.ctx));
-        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
         this.ctx.restore();
     }
 }
@@ -740,6 +869,20 @@ class BreakoutEngine {
             }
         }
         app.showGameMessage("LEVEL " + level, level === 2 ? "CLICK TO LAUNCH // WHITE = 2 HITS" : "CLICK TO LAUNCH");
+    }
+
+    onResize(oldW, oldH, newW, newH) {
+        const sx = newW / oldW, sy = newH / oldH;
+        this.bricks.forEach(b => { b.x *= sx; b.w *= sx; });
+        this.balls.forEach(b => { b.x *= sx; b.y *= sy; b.stuckTimer = 0; b.edgeTimer = 0; });
+        this.powerups.forEach(p => { p.x *= sx; p.y *= sy; });
+        this.projectiles.forEach(p => { p.x *= sx; p.y *= sy; });
+        this.fireballs.forEach(f => { f.x *= sx; f.y *= sy; });
+        this.paddle.x *= sx;
+        this.basePaddleW = Math.max(40, Math.min(this.basePaddleW, newW - 32));
+        this.applyPaddleWidth();
+        this.paddle.y = newH - 60;
+        this.paddle.x = Math.max(0, Math.min(newW - this.paddleW, this.paddle.x));
     }
 
     spawnBall() {
@@ -1058,7 +1201,7 @@ class BreakoutEngine {
         this.ctx.fillStyle = CONSTANTS.COLOR_BG;
         this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        if(this.shake > 0 && !REDUCED_MOTION) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
         this.ctx.font = "bold 30vh 'Courier New'"; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillStyle = '#111';
         this.ctx.fillText(this.score, this.canvas.width/2, this.canvas.height/2);
         
@@ -1118,7 +1261,6 @@ class BreakoutEngine {
             this.ctx.beginPath(); this.ctx.arc(f.x, f.y, f.r * 0.5, 0, Math.PI * 2); this.ctx.fill();
         });
         this.particles.forEach(p => p.draw(this.ctx));
-        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
 
         const ly = this.canvas.height - 24;
         this.ctx.globalAlpha = 0.85;
@@ -1149,33 +1291,51 @@ class SnakeEngine {
         this.canvas = canvas;
         this.ctx = ctx;
         this.grid = 20;
+        this.playTop = 100;
         this.reset();
     }
 
+    gridCols() { return Math.floor(this.canvas.width / this.grid); }
+    gridRows() { return Math.floor((this.canvas.height - this.playTop - (app.touchVisible ? 170 : 0)) / this.grid); }
+
     reset() {
-        const cx = Math.floor(this.canvas.width / this.grid / 2);
-        const cy = Math.floor(this.canvas.height / this.grid / 2);
+        const cx = Math.floor(this.gridCols() / 2);
+        const cy = Math.floor(this.gridRows() / 2);
         this.snake = [{x: cx, y: cy}, {x: cx-1, y: cy}, {x: cx-2, y: cy}];
         this.dir = {x: 1, y: 0}; this.nextDir = {x: 1, y: 0};
         this.spawnFood();
-        this.score = 0; this.speed = 8; this.frameCount = 0; this.shake = 0; this.particles = []; this.state = 'WAITING';
+        this.score = 0; this.level = 1; this.speed = 8; this.frameCount = 0; this.shake = 0; this.particles = []; this.state = 'WAITING';
         app.showGameMessage("SNAKE", "PRESS ARROWS TO START");
     }
 
     spawnFood() {
-        const cols = Math.floor(this.canvas.width / this.grid);
-        const rows = Math.floor(this.canvas.height / this.grid);
+        const cols = this.gridCols();
+        const rows = this.gridRows();
         let valid = false;
         while(!valid) {
             this.food = { x: Math.floor(Math.random() * cols), y: Math.floor(Math.random() * rows) };
             const onSnake = this.snake.some(s => s.x === this.food.x && s.y === this.food.y);
-            const underButton = (this.food.x < 12 && this.food.y < 6);
-            valid = !onSnake && !underButton;
+            valid = !onSnake;
         }
     }
 
     handleClick() {
         if (this.state === 'GAMEOVER') this.reset();
+    }
+
+    onResize(oldW, oldH, newW, newH) {
+        const oldCols = Math.max(1, Math.floor(oldW / this.grid));
+        const oldRows = Math.max(1, Math.floor((oldH - this.playTop - (app.touchVisible ? 170 : 0)) / this.grid));
+        const cols = this.gridCols(), rows = this.gridRows();
+        const sx = cols / oldCols, sy = rows / oldRows;
+        this.snake.forEach(cell => {
+            cell.x = Math.max(0, Math.min(cols - 1, Math.round(cell.x * sx)));
+            cell.y = Math.max(0, Math.min(rows - 1, Math.round(cell.y * sy)));
+        });
+        if (this.food) {
+            this.food.x = Math.max(0, Math.min(cols - 1, Math.round(this.food.x * sx)));
+            this.food.y = Math.max(0, Math.min(rows - 1, Math.round(this.food.y * sy)));
+        }
     }
 
     update() {
@@ -1193,8 +1353,8 @@ class SnakeEngine {
         if (this.frameCount < this.speed) return;
         this.frameCount = 0; this.dir = this.nextDir;
         const head = {x: this.snake[0].x + this.dir.x, y: this.snake[0].y + this.dir.y};
-        const cols = Math.floor(this.canvas.width / this.grid);
-        const rows = Math.floor(this.canvas.height / this.grid);
+        const cols = this.gridCols();
+        const rows = this.gridRows();
         const eats = head.x === this.food.x && head.y === this.food.y;
         if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows || this.checkSelfCollision(head, !eats)) {
             this.state = 'GAMEOVER'; this.shake = 30; this.spawnParticles(this.snake[0].x * this.grid, this.snake[0].y * this.grid, CONSTANTS.COLOR_FG);
@@ -1205,7 +1365,7 @@ class SnakeEngine {
         }
         this.snake.unshift(head);
         if (eats) {
-            this.score += 10; this.spawnFood(); this.shake = 5; this.spawnParticles(head.x * this.grid, head.y * this.grid, CONSTANTS.COLOR_HARD);
+            this.score += 10; this.level = 1 + Math.floor(this.score / 100); this.spawnFood(); this.shake = 5; this.spawnParticles(head.x * this.grid, head.y * this.grid, CONSTANTS.COLOR_HARD);
             audio.play('SCORE');
             if (this.speed > 3 && this.score % 50 === 0) this.speed--;
         } else { this.snake.pop(); }
@@ -1217,28 +1377,30 @@ class SnakeEngine {
         return body.some(s => s.x === head.x && s.y === head.y);
     }
     updateParticles() { this.particles.forEach(p => p.update()); this.particles = this.particles.filter(p => p.life > 0); if (this.shake > 0) this.shake *= 0.8; }
-    spawnParticles(x, y, c) { for(let i=0; i<8; i++) this.particles.push(new Particle(x + this.grid/2, y + this.grid/2, c)); }
+    spawnParticles(x, y, c) { for(let i=0; i<8; i++) this.particles.push(new Particle(x + this.grid/2, this.playTop + y + this.grid/2, c)); }
 
     draw() {
         this.ctx.fillStyle = CONSTANTS.COLOR_BG; this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        if(this.shake > 0 && !REDUCED_MOTION) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
         this.ctx.font = "bold 30vh 'Courier New'"; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillStyle = '#111';
         this.ctx.fillText(this.score, this.canvas.width/2, this.canvas.height/2);
         
-        // HI SCORE
-        this.ctx.font = "bold 24px 'Courier New'"; 
-        this.ctx.textAlign = 'right'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        this.ctx.fillText("HI: " + app.getHighScore('SNAKE'), this.canvas.width - 20, 40);
+        // HUD
+        this.ctx.font = "bold 24px 'Courier New'";
+        this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.fillText("LVL: " + this.level, 20, 84);
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText("HI: " + app.getHighScore('SNAKE'), this.canvas.width - 20, 84);
 
+        const playHeight = this.canvas.height - (app.touchVisible ? 170 : 0);
         this.ctx.strokeStyle = '#0a0a0a'; this.ctx.lineWidth = 1;
-        for (let x = 0; x < this.canvas.width; x += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(x, 0); this.ctx.lineTo(x, this.canvas.height); this.ctx.stroke(); }
-        for (let y = 0; y < this.canvas.height; y += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(0, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke(); }
+        for (let x = 0; x < this.canvas.width; x += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(x, this.playTop); this.ctx.lineTo(x, playHeight); this.ctx.stroke(); }
+        for (let y = this.playTop; y < playHeight; y += this.grid) { this.ctx.beginPath(); this.ctx.moveTo(0, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke(); }
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        this.snake.forEach((s) => { this.ctx.fillRect(s.x * this.grid + 1, s.y * this.grid + 1, this.grid - 2, this.grid - 2); });
-        this.ctx.fillStyle = CONSTANTS.COLOR_HARD; this.ctx.fillRect(this.food.x * this.grid, this.food.y * this.grid, this.grid, this.grid);
+        this.snake.forEach((s) => { this.ctx.fillRect(s.x * this.grid + 1, this.playTop + s.y * this.grid + 1, this.grid - 2, this.grid - 2); });
+        this.ctx.fillStyle = CONSTANTS.COLOR_HARD; this.ctx.fillRect(this.food.x * this.grid, this.playTop + this.food.y * this.grid, this.grid, this.grid);
         this.particles.forEach(p => p.draw(this.ctx));
-        this.ctx.fillStyle = 'rgba(0,0,0,0.1)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
         this.ctx.restore();
     }
 }
@@ -1256,20 +1418,60 @@ class SpaceInvadersEngine {
     reset() {
         this.score = 0;
         this.lives = 3;
-        this.state = 'WAITING';
+        this.wave = 1;
+        this.maxWaves = 3;
         this.particles = [];
         this.shake = 0;
-        this.player = { x: this.canvas.width / 2 - 20, y: this.canvas.height - 50, w: 40, h: 20, speed: 6, cooldown: 0 };
+        this.player = { x: this.canvas.width / 2 - 20, y: 0, w: 40, h: 20, speed: 6, cooldown: 0 };
+        this.buildWave();
+    }
+
+    buildWave() {
+        const bottomLift = app.touchVisible ? 140 : 0;
+        this.player.x = this.canvas.width / 2 - this.player.w / 2;
+        this.player.y = this.canvas.height - 50 - bottomLift;
+        this.player.cooldown = 0;
         this.aliens = []; this.bullets = []; this.enemyBullets = []; this.bunkers = [];
-        
-        const rows = 5; const cols = 10; const alienW = 30; const alienH = 20; const gap = 15;
+
+        const rows = this.wave === 1 ? 4 : (this.wave === 2 ? 4 : 5);
+        const cols = this.wave === 1 ? 8 : 10;
+        const alienW = 30; const alienH = 20; const gap = 15;
         const startX = (this.canvas.width - (cols * (alienW + gap))) / 2;
-        for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { this.aliens.push({ x: startX + c * (alienW + gap), y: 80 + r * (alienH + gap), w: alienW, h: alienH, active: true }); } }
-        this.alienDir = 1; this.alienSpeed = 1;
-        
+        for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { this.aliens.push({ x: startX + c * (alienW + gap), y: 130 + r * (alienH + gap), w: alienW, h: alienH, active: true }); } }
+        this.alienDir = 1;
+        this.alienSpeed = 1 + (this.wave - 1) * 0.25;
+
         const bunkerCount = 3; const bunkerW = 80; const bunkerGap = (this.canvas.width - (bunkerCount * bunkerW)) / (bunkerCount + 1);
-        for(let i=0; i<bunkerCount; i++) { this.bunkers.push({ x: bunkerGap + i * (bunkerW + bunkerGap), y: this.canvas.height - 120, w: bunkerW, h: 40, hp: 10 }); }
-        app.showGameMessage("INVADERS", "ARROWS: MOVE // SPACE: FIRE");
+        for(let i=0; i<bunkerCount; i++) { this.bunkers.push({ x: bunkerGap + i * (bunkerW + bunkerGap), y: this.canvas.height - 120 - bottomLift, w: bunkerW, h: 40, hp: 10 }); }
+
+        this.state = 'WAITING';
+        app.showGameMessage("WAVE " + this.wave, this.wave === 1 ? "ARROWS: MOVE // SPACE: FIRE" : "CLICK TO LAUNCH");
+    }
+
+    waveClear() {
+        if (this.wave >= this.maxWaves) {
+            this.state = 'VICTORY';
+            const isRecord = app.saveHighScore('INVADERS', this.score);
+            app.showGameMessage(isRecord ? "NEW RECORD" : "ALL WAVES CLEAR", "SCORE: " + this.score);
+            audio.play('POWERUP');
+            return;
+        }
+        this.wave++;
+        this.buildWave();
+        audio.play('POWERUP');
+    }
+
+    onResize(oldW, oldH, newW, newH) {
+        const sx = newW / oldW;
+        this.aliens.forEach(a => a.x *= sx);
+        this.bullets.forEach(b => b.x *= sx);
+        this.enemyBullets.forEach(b => b.x *= sx);
+        this.bunkers.forEach(b => b.x *= sx);
+        this.player.x = Math.max(0, Math.min(newW - this.player.w, this.player.x * sx));
+        const bottomLift = app.touchVisible ? 140 : 0;
+        this.player.y = newH - 50 - bottomLift;
+        this.bunkers.forEach(b => b.y = newH - 120 - bottomLift);
+        this.enemyBullets = this.enemyBullets.filter(b => b.y < newH);
     }
 
     handleClick() {
@@ -1301,13 +1503,7 @@ class SpaceInvadersEngine {
         for(let b of this.enemyBullets) { b.y += 4; if(b.y > this.canvas.height) b.active = false; } this.enemyBullets = this.enemyBullets.filter(b => b.active);
 
         let hitEdge = false; let lowestY = 0; const activeAliens = this.aliens.filter(a => a.active);
-        if (activeAliens.length === 0) { 
-            this.state = 'VICTORY'; 
-            const isRecord = app.saveHighScore('INVADERS', this.score);
-            app.showGameMessage(isRecord ? "NEW RECORD" : "SYSTEM CLEARED", "ALIEN THREAT NEUTRALIZED"); 
-            audio.play('POWERUP');
-            return; 
-        }
+        if (activeAliens.length === 0) { this.waveClear(); return; }
 
         if(Math.random() < 0.005 + (0.0005 * (50 - activeAliens.length))) {
             const shooter = activeAliens[Math.floor(Math.random() * activeAliens.length)];
@@ -1344,7 +1540,7 @@ class SpaceInvadersEngine {
     draw() {
         this.ctx.fillStyle = CONSTANTS.COLOR_BG; this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        if(this.shake > 0 && !REDUCED_MOTION) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
 
         // Score
         this.ctx.font = "bold 30vh 'Courier New'"; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle'; this.ctx.fillStyle = '#111';
@@ -1352,10 +1548,10 @@ class SpaceInvadersEngine {
 
         // HUD
         this.ctx.font = "bold 24px 'Courier New'"; this.ctx.textAlign = 'left'; this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        let livesStr = "LIVES: "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr, 20, 40);
+        let livesStr = "LIVES: "; for(let i=0; i<this.lives; i++) livesStr += "♥ "; this.ctx.fillText(livesStr + " WAVE: " + this.wave + "/" + this.maxWaves, 20, 84);
         // HI SCORE
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('INVADERS'), this.canvas.width - 20, 40);
+        this.ctx.fillText("HI: " + app.getHighScore('INVADERS'), this.canvas.width - 20, 84);
 
         // Player
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
@@ -1387,7 +1583,6 @@ class SpaceInvadersEngine {
         this.particles.forEach(p => p.draw(this.ctx));
 
         // Scanlines
-        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
         this.ctx.restore();
     }
 }
@@ -1408,6 +1603,8 @@ class TetrisEngine {
     reset() {
         this.grid = Array(this.rows).fill().map(() => Array(this.cols).fill(0));
         this.score = 0;
+        this.level = 1;
+        this.lines = 0;
         this.shake = 0;
         this.particles = [];
         this.state = 'WAITING';
@@ -1426,10 +1623,11 @@ class TetrisEngine {
     }
 
     calculateScale() {
-        // Calcul pour centrer la grille
-        this.gridSize = Math.floor(Math.min(this.canvas.width / (this.cols + 4), this.canvas.height / (this.rows + 2)));
+        const topSafe = 104;
+        const bottomSafe = app.touchVisible ? 170 : 0;
+        this.gridSize = Math.floor(Math.min(this.canvas.width / (this.cols + 4), (this.canvas.height - topSafe - bottomSafe) / this.rows));
         this.offsetX = Math.floor((this.canvas.width - this.cols * this.gridSize) / 2);
-        this.offsetY = Math.floor((this.canvas.height - this.rows * this.gridSize) / 2);
+        this.offsetY = Math.max(topSafe, Math.floor((this.canvas.height - bottomSafe - this.rows * this.gridSize) / 2));
     }
 
     createPiece(type) {
@@ -1549,8 +1747,15 @@ class TetrisEngine {
             this.grid.unshift(row);
             ++y;
             this.score += 100;
+            this.lines++;
+            if (this.lines % 10 === 0) {
+                this.level++;
+                this.dropInterval = Math.max(10, 40 - (this.level - 1) * 4);
+                audio.play('POWERUP');
+            } else {
+                audio.play('SCORE');
+            }
             this.shake = 20;
-            audio.play('SCORE');
             // Particles on line clear
             for(let k=0; k<10; k++) {
                 this.particles.push(new Particle(this.offsetX + Math.random()*this.cols*this.gridSize, this.offsetY + y*this.gridSize, CONSTANTS.COLOR_FG));
@@ -1597,7 +1802,7 @@ class TetrisEngine {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.ctx.save();
-        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        if(this.shake > 0 && !REDUCED_MOTION) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
 
         // Draw Board Background
         this.ctx.fillStyle = '#111';
@@ -1626,10 +1831,10 @@ class TetrisEngine {
         this.ctx.font = "bold 24px 'Courier New'";
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
         this.ctx.textAlign = 'left';
-        this.ctx.fillText("SCORE: " + this.score, 20, 40);
+        this.ctx.fillText("SCORE: " + this.score + "  LVL: " + this.level, 20, 84);
         // HI SCORE
         this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('TETRIS'), this.canvas.width - 20, 40);
+        this.ctx.fillText("HI: " + app.getHighScore('TETRIS'), this.canvas.width - 20, 84);
 
         this.particles.forEach(p => p.draw(this.ctx));
         this.ctx.restore();
@@ -1648,6 +1853,8 @@ class AsteroidsEngine {
 
     reset() {
         this.score = 0;
+        this.wave = 1;
+        this.waveFlash = 0;
         this.state = 'WAITING';
         this.ship = { x: this.canvas.width/2, y: this.canvas.height/2, a: -Math.PI/2, xv: 0, yv: 0, r: 10 };
         this.asteroids = [];
@@ -1656,11 +1863,29 @@ class AsteroidsEngine {
         this.shake = 0;
         
         // Spawn Asteroids
-        for(let i=0; i<5; i++) {
-            this.spawnAsteroid(Math.random()*this.canvas.width, Math.random()*this.canvas.height, 40);
-        }
+        this.spawnWave(5);
         
         app.showGameMessage("ASTEROIDS", "ARROWS: DRIVE // SPACE: FIRE");
+    }
+
+    spawnWave(count) {
+        for (let i = 0; i < count; i++) {
+            let x, y, tries = 0;
+            do {
+                x = Math.random() * this.canvas.width;
+                y = Math.random() * this.canvas.height;
+                tries++;
+            } while (tries < 20 && Math.hypot(x - this.ship.x, y - this.ship.y) < 180);
+            this.spawnAsteroid(x, y, 40);
+        }
+    }
+
+    nextWave() {
+        this.wave++;
+        this.spawnWave(Math.min(14, 4 + this.wave));
+        this.waveFlash = 90;
+        this.shake = 10;
+        audio.play('POWERUP');
     }
 
     spawnAsteroid(x, y, r) {
@@ -1683,10 +1908,20 @@ class AsteroidsEngine {
         else if (this.state === 'GAMEOVER') this.reset();
     }
 
+    onResize(oldW, oldH, newW, newH) {
+        const sx = newW / oldW, sy = newH / oldH;
+        this.ship.x *= sx;
+        this.ship.y *= sy;
+        this.asteroids.forEach(a => { a.x *= sx; a.y *= sy; });
+        this.bullets.forEach(b => { b.x *= sx; b.y *= sy; });
+        this.particles.forEach(p => { p.x *= sx; p.y *= sy; });
+    }
+
     update() {
         this.particles.forEach(p => p.update());
         this.particles = this.particles.filter(p => p.life > 0);
         if (this.shake > 0) this.shake *= 0.9;
+        if (this.waveFlash > 0) this.waveFlash--;
         const keys = app.input.keys;
         if(this.state === 'WAITING' && (keys['ArrowUp'] || keys[' '] || app.input.consumeAny(['ArrowUp',' ']))) { this.state = 'PLAYING'; app.hideGameMessage(); }
         if(this.state !== 'PLAYING') return;
@@ -1764,14 +1999,12 @@ class AsteroidsEngine {
                         this.spawnAsteroid(a.x, a.y, a.r/2);
                         this.spawnAsteroid(a.x, a.y, a.r/2);
                     }
-                    // Win?
-                    if(this.asteroids.length === 0) {
-                        this.spawnAsteroid(Math.random()*this.canvas.width, 0, 40); // Respawn infinite
-                    }
                     break;
                 }
             }
         }
+
+        if(this.state === 'PLAYING' && this.asteroids.length === 0) this.nextWave();
     }
 
     spawnParticles(x, y, c, scale=1) { for(let i=0; i<10; i++) this.particles.push(new Particle(x, y, c, scale)); }
@@ -1780,16 +2013,7 @@ class AsteroidsEngine {
         this.ctx.fillStyle = CONSTANTS.COLOR_BG;
         this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
-
-        // Score
-        this.ctx.font = "bold 30px 'Courier New'";
-        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText("SCORE: " + this.score, 20, 40);
-        // HI SCORE
-        this.ctx.textAlign = 'right';
-        this.ctx.fillText("HI: " + app.getHighScore('ASTEROIDS'), this.canvas.width - 20, 40);
+        if(this.shake > 0 && !REDUCED_MOTION) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
 
         // Ship
         if(this.state !== 'GAMEOVER') {
@@ -1826,9 +2050,28 @@ class AsteroidsEngine {
         this.ctx.fillStyle = CONSTANTS.COLOR_FG;
         for(let b of this.bullets) this.ctx.fillRect(b.x-2, b.y-2, 4, 4);
 
+        if(this.waveFlash > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = Math.min(1, this.waveFlash / 30);
+            this.ctx.font = "bold 48px 'Courier New'";
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+            this.ctx.fillText("WAVE " + this.wave, this.canvas.width/2, this.canvas.height/2 + 150);
+            this.ctx.restore();
+        }
+
         this.particles.forEach(p => p.draw(this.ctx));
-        this.ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
         this.ctx.restore();
+
+        this.ctx.fillStyle = 'rgba(5, 5, 5, 0.8)';
+        this.ctx.fillRect(0, 58, this.canvas.width, 40);
+        this.ctx.font = "bold 30px 'Courier New'";
+        this.ctx.fillStyle = CONSTANTS.COLOR_FG;
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText("SCORE: " + this.score + "  WAVE: " + this.wave, 20, 84);
+        this.ctx.textAlign = 'right';
+        this.ctx.fillText("HI: " + app.getHighScore('ASTEROIDS'), this.canvas.width - 20, 84);
     }
 }
 
@@ -1843,13 +2086,35 @@ class App {
         this.currentGame = null;
         this.animationId = null;
         this.highScores = {};
+        this.currentGameKey = null;
 
         this.uiMenu = document.getElementById('main-menu');
         this.uiMessage = document.getElementById('game-message');
         this.uiBack = document.getElementById('back-btn');
         this.uiPause = document.getElementById('pause-btn');
         this.uiPauseOverlay = document.getElementById('pause-overlay');
+        this.uiTouch = document.getElementById('touch-controls');
         this.paused = false;
+        this.isTouch = (navigator.maxTouchPoints || 0) > 0 || window.matchMedia('(pointer: coarse)').matches;
+        this.touchVisible = false;
+
+        document.querySelectorAll('#touch-controls .touch-btn').forEach(btn => {
+            const key = btn.dataset.key;
+            const down = (e) => {
+                e.preventDefault();
+                this.input.press(key);
+                btn.classList.add('pressed');
+            };
+            const up = (e) => {
+                e.preventDefault();
+                this.input.release(key);
+                btn.classList.remove('pressed');
+            };
+            btn.addEventListener('pointerdown', down);
+            btn.addEventListener('pointerup', up);
+            btn.addEventListener('pointercancel', up);
+            btn.addEventListener('pointerleave', up);
+        });
 
         // Évite que Space (tir / hard drop) réactive le bouton AUDIO après un clic souris.
         const muteBtn = document.getElementById('mute-btn');
@@ -1857,9 +2122,16 @@ class App {
 
         this.resize();
         window.addEventListener('resize', () => this.resize());
+        window.addEventListener('blur', () => {
+            if (this.currentGame && !this.paused) this.togglePause(true);
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.currentGame && !this.paused) this.togglePause(true);
+        });
 
         // Fond animé du menu
         this.menuParticles = [];
+        this.renderMenuHighScores();
 
         // Pas de temps fixe : le jeu tourne à 60 updates/s quel que soit l'écran.
         this.step = 1000 / 60;
@@ -1883,26 +2155,46 @@ class App {
         if(score > this.getHighScore(game)) {
             this.highScores[game] = score;
             try { localStorage.setItem('PLAY_HI_' + game, String(score)); } catch (e) {}
+            this.renderMenuHighScores();
             return true; // New Record!
         }
         return false;
     }
 
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+    renderMenuHighScores() {
+        document.querySelectorAll('.menu-hi[data-hi]').forEach(el => {
+            el.textContent = 'HI ' + this.getHighScore(el.dataset.hi);
+        });
     }
 
-    togglePause() {
+    resize() {
+        const oldW = this.canvas.width || window.innerWidth;
+        const oldH = this.canvas.height || window.innerHeight;
+        const newW = window.innerWidth, newH = window.innerHeight;
+        this.canvas.width = newW;
+        this.canvas.height = newH;
+        if (this.currentGame && this.currentGame.onResize) this.currentGame.onResize(oldW, oldH, newW, newH);
+    }
+
+    togglePause(silent = false) {
         if (!this.currentGame) return;
         this.paused = !this.paused;
         this.uiPause.innerText = this.paused ? 'RESUME' : 'PAUSE';
+        this.uiPause.setAttribute('aria-pressed', String(this.paused));
         this.uiPauseOverlay.style.display = this.paused ? 'flex' : 'none';
         this.input.reset();
+        this.clearTouchButtons();
+        this.uiTouch.style.display = (this.paused || !this.touchVisible) ? 'none' : 'flex';
         this.accumulator = 0;
         this.lastTime = performance.now();
-        audio.init();
-        audio.play('UI_CLICK');
+        if (!silent) {
+            audio.init();
+            audio.play('UI_CLICK');
+        }
+    }
+
+    clearTouchButtons() {
+        document.querySelectorAll('#touch-controls .touch-btn.pressed').forEach(btn => btn.classList.remove('pressed'));
     }
 
     launch(gameType) {
@@ -1911,14 +2203,22 @@ class App {
         this.uiBack.style.display = 'block';
         this.uiPause.style.display = 'block';
         this.uiPause.innerText = 'PAUSE';
+        this.uiPause.setAttribute('aria-pressed', 'false');
         this.uiPauseOverlay.style.display = 'none';
         this.paused = false;
         this.input.reset();
         this.accumulator = 0;
+        this.currentGameKey = gameType;
         
         // Initialiser l'audio au lancement d'un jeu si pas déjà fait
         audio.init();
         audio.play('UI_CLICK');
+
+        this.touchVisible = this.isTouch && ['SNAKE','TETRIS','INVADERS','ASTEROIDS'].includes(gameType);
+        this.uiTouch.style.display = this.touchVisible ? 'flex' : 'none';
+        this.clearTouchButtons();
+        document.getElementById('touch-action').textContent = gameType === 'TETRIS' ? 'DROP' : 'FIRE';
+        document.getElementById('touch-action-wrap').style.visibility = gameType === 'SNAKE' ? 'hidden' : 'visible';
 
         if (gameType === 'PONG') {
             this.currentGame = new PongEngine(this.canvas, this.ctx);
@@ -1936,7 +2236,11 @@ class App {
     }
 
     loadMenu() {
+        if (this.currentGame && this.currentGameKey && this.currentGameKey !== 'PONG' && typeof this.currentGame.score === 'number') {
+            this.saveHighScore(this.currentGameKey, this.currentGame.score);
+        }
         this.currentGame = null;
+        this.currentGameKey = null;
         this.paused = false;
         this.input.reset();
         this.accumulator = 0;
@@ -1944,8 +2248,13 @@ class App {
         this.uiBack.style.display = 'none';
         this.uiPause.style.display = 'none';
         this.uiPause.innerText = 'PAUSE';
+        this.uiPause.setAttribute('aria-pressed', 'false');
         this.uiPauseOverlay.style.display = 'none';
+        this.touchVisible = false;
+        this.uiTouch.style.display = 'none';
+        this.clearTouchButtons();
         this.hideGameMessage();
+        this.renderMenuHighScores();
         // Reset canvas
         this.ctx.fillStyle = CONSTANTS.COLOR_BG;
         this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
@@ -1964,7 +2273,7 @@ class App {
 
     updateMenu() {
         // Effet Matrix/Pluie verte subtile
-        if(Math.random() < 0.1) {
+        if(!REDUCED_MOTION && Math.random() < 0.1) {
             this.menuParticles.push(new Particle(Math.random()*this.canvas.width, 0, CONSTANTS.COLOR_FG));
         }
         this.menuParticles.forEach(p => {
@@ -1980,9 +2289,6 @@ class App {
 
         this.menuParticles.forEach(p => p.draw(this.ctx));
 
-        // Scanlines
-        this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        for(let i=0; i<this.canvas.height; i+=4) this.ctx.fillRect(0,i,this.canvas.width, 2);
     }
 
     loop(now) {
