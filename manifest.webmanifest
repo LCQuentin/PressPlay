@@ -1,7 +1,7 @@
 {
   "name": "PressPlay — Arcade",
   "short_name": "PLAY",
-  "description": "Une borne d'arcade rétro dans le navigateur : six jeux, deux éditions standalone.",
+  "description": "Une borne d'arcade rétro dans le navigateur : douze jeux, deux éditions standalone.",
   "lang": "fr",
   "start_url": "./hub.html",
   "scope": "./",

@@ -23,16 +23,22 @@ const check = (condition, label) => {
 
 await page.goto(hub);
 await page.waitForTimeout(300);
-check(await page.locator('.menu-btn').count() === 6, 'six menu entries');
+check(await page.locator('.menu-btn').count() === 12, 'twelve menu entries');
 
-for (const game of ['PONG', 'BREAKOUT', 'SNAKE', 'INVADERS', 'TETRIS', 'ASTEROIDS']) {
+for (const game of ['PONG', 'BREAKOUT', 'SNAKE', 'INVADERS', 'TETRIS', 'ASTEROIDS', 'MAZE', 'TRON', 'LUNAR', 'ECHO', 'DEFCON', 'HOPPER']) {
   await page.click(`text=${game}`);
   await page.waitForTimeout(100);
   if (game === 'PONG') {
     await page.click('[data-i18n="start"]');
     await page.waitForTimeout(100);
+  } else {
+    await page.mouse.click(640, 400);
+    await page.waitForTimeout(250);
   }
   check(await page.evaluate(() => !!app.currentGame), `${game} launches`);
+  if (['MAZE', 'TRON', 'LUNAR', 'ECHO', 'DEFCON', 'HOPPER'].includes(game)) {
+    check(await page.evaluate(() => app.currentGame.state !== 'WAITING'), `${game} starts`);
+  }
   await page.keyboard.press('p');
   await page.waitForTimeout(60);
   check(await page.evaluate(() => app.paused), `${game} pauses`);

@@ -2,7 +2,7 @@
 
 **Jouer :** https://lcquentin.github.io/PressPlay/
 
-Une petite borne d'arcade rétro dans le navigateur : six jeux réunis dans un hub, plus deux jeux standalone. HTML / CSS / JavaScript vanilla, **zéro dépendance à l’exécution**, un fichier = un jeu. Installable en PWA, jouable offline.
+Une petite borne d'arcade rétro dans le navigateur : douze jeux réunis dans un hub, plus deux jeux standalone. HTML / CSS / JavaScript vanilla, **zéro dépendance à l’exécution**, un fichier = un jeu. Installable en PWA, jouable offline.
 
 Esthétique brutaliste : noir profond, vert acide (`#CCFF00`), typo monospace, scanlines.
 
@@ -11,7 +11,7 @@ Esthétique brutaliste : noir profond, vert acide (`#CCFF00`), typo monospace, s
 | Fichier | Jeu | Contrôles |
 | --- | --- | --- |
 | `index.html` | Landing / choix de la borne, PWA | souris / tactile |
-| `hub.html` | Borne arcade (6 jeux) | souris, tactile (d-pad), clavier ou manette, `P` / `PAUSE` |
+| `hub.html` | Borne arcade (12 jeux) | souris, tactile (d-pad), clavier ou manette, `P` / `PAUSE` |
 | `pong.html` | Pong — édition brutaliste | souris / tactile, `P` pour pause |
 | `captur.html` | Renault Captur Arcade (course d'évitement) | flèches gauche / droite |
 
@@ -23,6 +23,12 @@ Esthétique brutaliste : noir profond, vert acide (`#CCFF00`), typo monospace, s
 - **Space Invaders** — 3 vagues, **UFO bonus** et **boss** à la dernière vague ; flèches, `Espace`, d-pad tactile.
 - **Tetris** — **pièce suivante, réserve (`C`/`Shift`), ghost piece** et sac de 7 pièces ; niveaux de vitesse ; `Haut` = rotation, `Espace` = chute rapide.
 - **Asteroids** — vagues progressives, **UFO**, **bouclier** ramassable ; `Gauche`/`Droite`, `Haut`, `Espace`, d-pad tactile.
+- **Neon Maze** — labyrinthe 15×13, 3 fantômes, 4 super-pilules et 3 niveaux ; flèches ou d-pad. Les fantômes chassent, fuient et se laissent manger.
+- **Tron** — **2 joueurs local** : `A`/`D` contre `Gauche`/`Droite`, traînées lumineuses, premier à 3 manches. Clavier uniquement.
+- **Lunar** — alunissage vectoriel : gravité, rotation, poussée et carburant ; 3 plateformes multiplicatrices, 3 vies, 5 alunissages pour le succès. Flèches + `Espace` (ou bouton tactile).
+- **Echo** — Simon 4 pads : séquence lumineuse et sonore, clic/tactile ou touches `1`–`4`, séquence de 10 pour le succès.
+- **Defcon** — Missile Command : 3 villes à défendre, missiles entrants, clic/tactile pour intercepter, vagues progressives et 5 vagues pour le succès.
+- **Hopper** — Frogger : route, rivière, rondins, 5 maisons, 3 vies et chrono ; flèches ou d-pad. 3 maisons pour le succès.
 
 ## Lancer
 
@@ -42,8 +48,8 @@ python3 -m http.server
 
 - **Audio** : synthèse procédurale via la Web Audio API (`AudioController`) — aucun fichier son. Bouton `AUDIO: ON/OFF` dans le hub.
 - **Scores** : meilleurs scores persistés par jeu dans `localStorage` (`PLAY_HI_<GAME>`), affichés dans le menu et sauvegardés même en quittant une partie.
-- **Records** : top 5 par jeu avec initiales 3 lettres, stats (parties, victoires Pong) et 8 succès locaux.
-- **Défi du jour** : un jeu tournant, seedé de façon déterministe par la date ; classement local du jour. Aucun serveur.
+- **Records** : top 5 par jeu avec initiales 3 lettres, stats (parties, victoires Pong) et 14 succès locaux.
+- **Défi du jour** : un jeu tournant (hors Tron 2 joueurs), seedé de façon déterministe par la date ; classement local du jour. Aucun serveur.
 - **Réglages** : volume, musique, haptics, scanlines/CRT, mouvement réduit, langue FR/EN, taille des contrôles tactiles — persistés dans `PLAY_SETTINGS`.
 - **Manette** : d-pad/stick + bouton action ; bouton Start = pause. Vérifiable sur les jeux clavier (et paddle Pong/Breakout).
 - **Debug** : ajouter `?debug` à l’URL pour un overlay FPS/état/score.
